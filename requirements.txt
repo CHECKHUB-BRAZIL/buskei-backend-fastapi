@@ -1,67 +1,9 @@
-# ========================
-# FLUTTER / DART
-# ========================
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-.pub-cache/
-build/
-ios/Pods/
-android/.gradle/
-android/app/build/
-android/key.properties
-android/local.properties
-
-# ========================
-# FASTAPI / PYTHON
-# ========================
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.db
-*.sqlite3
-.env
-venv/
-env/
-ENV/
-.venv/
-
-# ========================
-# NODE
-# ========================
-node_modules/
-
-# ========================
-# LOGS
-# ========================
-*.log
-
-# ========================
-# VS CODE
-# ========================
-.vscode/
-
-# ========================
-# SISTEMA OPERACIONAL
-# ========================
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# ========================
-# ANDROID / CHAVES
-# ========================
-*.jks
-*.keystore
-
-# ========================
-# COBERTURA DE TESTES
-# ========================
-coverage/
-
-# ========================
-# FASTAPI CACHE
-# ========================
-.cache/
+fastapi
+uvicorn
+python-dotenv
+pydantic
+sqlalchemy
+psycopg2-binary
+passlib[bcrypt]
+python-jose
+httpx
