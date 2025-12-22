@@ -1,6 +1,7 @@
 from typing import Tuple
 
-from app.modules.auth.domain.entities.user_entity import UserEntity
+from app.modules.auth.application.dtos.login_dto import LoginInputDTO
+from app.modules.auth.application.dtos.login_result_dto import LoginResultDTO
 from app.modules.auth.domain.repositories.user_repository import UserRepository
 from app.modules.auth.domain.value_objects.email_vo import Email
 from app.modules.auth.domain.exceptions.auth_exceptions import (
@@ -31,7 +32,7 @@ class LoginUseCase:
         self._user_repository = user_repository
         self._password_hasher = password_hasher
     
-    async def execute(self, email: str, senha: str) -> UserEntity:
+    async def execute(self, input_dto: LoginInputDTO) -> LoginResultDTO:
         """
         Executa o caso de uso de login.
         
@@ -46,33 +47,28 @@ class LoginUseCase:
             InvalidCredentialsException: Credenciais inválidas
             InactiveUserException: Usuário inativo
             UserNotFoundException: Usuário não encontrado
-        """
-        
-        # Valida e normaliza email usando Value Object
+        """                
         try:
-            email_vo = Email(email)
-        except ValueError as e:
-            raise InvalidCredentialsException(str(e))
+            email_vo = Email(input_dto.email)
+        except ValueError:
+            raise InvalidCredentialsException()
         
-        # Busca usuário pelo email
-        user = await self._user_repository.get_by_email(email_vo.value)
-        
+        user = await self._user_repository.get_by_email(email_vo)
+
         if not user:
             raise UserNotFoundException(email_vo.value)
-        
-        # Verifica senha
-        password_hash = await self._user_repository.get_password_hash(user.id)
-        
-        if not password_hash:
+
+        password_hash = user.password.hashed
+
+        if not self._password_hasher.verify(input_dto.password, password_hash):
             raise InvalidCredentialsException()
-        
-        is_valid = self._password_hasher.verify(senha, password_hash)
-        
-        if not is_valid:
-            raise InvalidCredentialsException()
-        
-        # Verifica se usuário está ativo
+
         if not user.can_login():
             raise InactiveUserException()
-        
-        return user
+
+        return LoginResultDTO(
+            user_id=user.id,
+            nome=user.nome,
+            email=user.email,
+            is_active=user.is_active,
+        )

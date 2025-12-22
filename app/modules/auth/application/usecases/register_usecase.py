@@ -1,9 +1,15 @@
-import uuid
-
+from app.modules.auth.application.dtos.register_dto import (
+    RegisterInputDTO,
+    RegisterResultDTO,
+)
 from app.modules.auth.domain.entities.user_entity import UserEntity
 from app.modules.auth.domain.repositories.user_repository import UserRepository
-from app.modules.auth.domain.value_objects.email_vo import Email
-from app.modules.auth.domain.value_objects.password_vo import Password
+from app.modules.auth.domain.value_objects import (
+    UserId,
+    Name,
+    Email,
+    Password,
+)
 from app.modules.auth.domain.exceptions.auth_exceptions import (
     UserAlreadyExistsException,
 )
@@ -12,17 +18,23 @@ from app.modules.auth.infrastructure.security.password_hasher import PasswordHas
 
 class RegisterUseCase:
     """
-    Caso de uso: Registrar novo usuário.
-    
+    Caso de uso: Registrar um novo usuário no sistema.
+
+    Camada: Application
+
     Responsabilidades:
-    - Validar dados de entrada
-    - Verificar se email já existe
-    - Criar hash da senha
-    - Criar novo usuário
-    
-    NÃO gera tokens JWT - isso é responsabilidade da camada de apresentação.
+    ------------------
+    - Orquestrar regras do domínio
+    - Coordenar serviços técnicos (hash)
+    - Criar a entidade UserEntity
+    - Persistir o usuário
+
+    Importante:
+    -----------
+    - Senha em texto plano **não entra no domínio**
+    - Domínio recebe apenas senha já em hash
     """
-    
+
     def __init__(
         self,
         user_repository: UserRepository,
@@ -30,54 +42,48 @@ class RegisterUseCase:
     ):
         self._user_repository = user_repository
         self._password_hasher = password_hasher
-    
-    async def execute(
-        self,
-        nome: str,
-        email: str,
-        senha: str,
-    ) -> UserEntity:
+
+    async def execute(self, input_dto: RegisterInputDTO) -> RegisterResultDTO:
         """
-        Executa o caso de uso de registro.
-        
-        Args:
-            nome: Nome do usuário
-            email: Email do usuário
-            senha: Senha em texto plano
-            
-        Returns:
-            UserEntity: Entidade do usuário criado
-            
-        Raises:
-            UserAlreadyExistsException: Email já cadastrado
-            ValueError: Dados inválidos
+        Executa o fluxo de registro de usuário.
+
+        Fluxo:
+        ------
+        1. Verifica se email já existe
+        2. Gera hash da senha
+        3. Cria entidade UserEntity
+        4. Persiste usuário
+        5. Retorna DTO de saída
         """
-        
-        # Valida email usando Value Object
-        email_vo = Email(email)
-        
-        # Verifica se email já existe
-        if await self._user_repository.exists_by_email(email_vo.value):
-            raise UserAlreadyExistsException(email_vo.value)
-        
-        # Valida senha usando Value Object
-        password_vo = Password(senha)
-        
-        # Cria hash da senha
-        hashed_password = self._password_hasher.hash(password_vo.value)
-        
-        # Cria entidade do usuário
-        user_entity = UserEntity(
-            id=str(uuid.uuid4()),
-            nome=nome.strip(),
-            email=email_vo.value,
-            is_active=True,
+
+        # 1. Verifica duplicidade de email
+        if await self._user_repository.exists_by_email(input_dto.email):
+            raise UserAlreadyExistsException(input_dto.email.value)
+
+        # 2. Gera hash da senha (infra)
+        password_hash = self._password_hasher.hash(
+            input_dto.password.value
         )
-        
-        # Persiste no repositório
-        created_user = await self._user_repository.create(
-            user=user_entity,
-            hashed_password=hashed_password,
+
+        # 3. Cria Password (VO definitivo do domínio)
+        password = Password(password_hash)
+
+        # 4. Cria entidade de domínio
+        user = UserEntity(
+            id=UserId.new(),
+            nome=input_dto.nome,
+            email=input_dto.email,
+            password=password,
         )
-        
-        return created_user
+
+        # 5. Persiste
+        created_user = await self._user_repository.create(user)
+
+        # 6. Retorna DTO de saída
+        return RegisterResultDTO(
+            user_id=created_user.id,
+            nome=created_user.nome,
+            email=created_user.email,
+            is_active=created_user.is_active,
+            created_at=created_user.created_at,
+        )
