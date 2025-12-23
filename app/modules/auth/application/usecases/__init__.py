@@ -1,11 +1,9 @@
 from .login_usecase import LoginUseCase
 from .register_usecase import RegisterUseCase
-from .get_current_user_usecase import GetCurrentUserUseCase
-from .logout_usecase import LogoutUseCase
+from .getcurrentuser_usecase import GetCurrentUserUseCase
 
 __all__ = [
     "LoginUseCase",
     "RegisterUseCase",
-    "GetCurrentUserUseCase",
-    "LogoutUseCase",
+    "GetCurrentUserUseCase"
 ]
