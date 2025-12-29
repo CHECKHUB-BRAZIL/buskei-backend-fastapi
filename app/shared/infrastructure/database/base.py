@@ -1,13 +1,13 @@
+from sqlalchemy import Column, DateTime
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, String, DateTime
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
-
+from sqlalchemy.dialects.postgresql import UUID
 
 Base = declarative_base()
 
-
 class BaseModel(Base):
+    __abstract__ = True  # não vira tabela
     """
     Classe base para todos os models SQLAlchemy.
     
@@ -16,9 +16,20 @@ class BaseModel(Base):
     - created_at: timestamp de criação
     - updated_at: timestamp de última atualização
     """
-    
-    __abstract__ = True
-    
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
