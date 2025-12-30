@@ -91,7 +91,7 @@ async def login(
         )
         
     except (InvalidCredentialsException, UserNotFoundException) as e:
-        raise UnauthorizedException(str(e))
+        raise UnauthorizedException("Credenciais inválidas")
     except InactiveUserException as e:
         raise UnauthorizedException("Usuário inativo")
     except ValueError as e:

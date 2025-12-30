@@ -10,8 +10,7 @@ from app.modules.auth.infrastructure.security.jwt_handler import JWTHandler
 from app.modules.auth.infrastructure.security.password_hasher import PasswordHasher
 from app.modules.auth.application.usecases.login_usecase import LoginUseCase
 from app.modules.auth.application.usecases.register_usecase import RegisterUseCase
-from app.modules.auth.application.usecases.get_current_user_usecase import GetCurrentUserUseCase
-from app.modules.auth.application.usecases.logout_usecase import LogoutUseCase
+from app.modules.auth.application.usecases.getcurrentuser_usecase import GetCurrentUserUseCase
 from app.modules.auth.domain.exceptions.auth_exceptions import InvalidTokenException
 from app.core.constants import TOKEN_TYPE_ACCESS
 
@@ -60,11 +59,6 @@ def get_current_user_usecase(
 ) -> GetCurrentUserUseCase:
     """Dependency para obter GetCurrentUserUseCase."""
     return GetCurrentUserUseCase(user_repository)
-
-
-def get_logout_usecase() -> LogoutUseCase:
-    """Dependency para obter LogoutUseCase."""
-    return LogoutUseCase()
 
 
 # ============================================================
