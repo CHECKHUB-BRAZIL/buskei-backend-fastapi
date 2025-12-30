@@ -4,6 +4,7 @@ from typing import Optional
 from app.modules.auth.domain.entities.user_entity import UserEntity
 from app.modules.auth.domain.value_objects.user_id_vo import UserId
 from app.modules.auth.domain.value_objects.email_vo import Email
+from domain.read_models.user_credentials import UserCredentials
 
 
 class UserRepository(ABC):
@@ -42,4 +43,14 @@ class UserRepository(ABC):
     @abstractmethod
     async def delete(self, user_id: UserId) -> None:
         """Remove usuário."""
+        raise NotImplementedError
+    
+    @abstractmethod
+    async def get_credentials_by_email(
+        self,
+        email: Email,
+    ) -> Optional[UserCredentials]:
+        """
+        Retorna apenas os dados necessários para autenticação.
+        """
         raise NotImplementedError

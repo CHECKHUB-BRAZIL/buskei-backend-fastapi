@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import UUID
 
 from app.shared.infrastructure.database.base import BaseModel
 from domain.entities.user_entity import UserEntity
-from domain.value_objects import UserId, Name, Email, Password
+from domain.value_objects import UserId, Name, Email
 
 
 class UserModel(BaseModel):
@@ -39,7 +39,6 @@ class UserModel(BaseModel):
             id=UserId(self.id),
             nome=Name(self.nome),
             email=Email(self.email),
-            password=Password(self.senha_hash),
             is_active=self.is_active,
             created_at=self.created_at,
             updated_at=self.updated_at,

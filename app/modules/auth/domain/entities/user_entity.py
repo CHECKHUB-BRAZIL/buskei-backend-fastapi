@@ -1,11 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
 from domain.value_objects.user_id_vo import UserId
 from domain.value_objects.name_vo import Name
 from domain.value_objects.email_vo import Email
-from domain.value_objects.password_vo import Password
 
 
 @dataclass(frozen=True)
@@ -32,9 +31,8 @@ class UserEntity:
     id: UserId
     nome: Name
     email: Email
-    password: Password
     is_active: bool = True
-    created_at: datetime = datetime.now(timezone.utc)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
 
     # ------------------------------------------------------------------
@@ -84,20 +82,6 @@ class UserEntity:
             updated_at=datetime.now(timezone.utc),
         )
 
-    def change_password(self, new_password: Password) -> "UserEntity":
-        """
-        Altera a senha do usuário.
-
-        Regra de negócio:
-        - Usuários desativados não podem alterar a senha
-        """
-        self._ensure_active()
-
-        return self._copy(
-            password=new_password,
-            updated_at=datetime.now(timezone.utc),
-        )
-
     def can_login(self) -> bool:
         """
         Indica se o usuário pode realizar login.
@@ -128,7 +112,6 @@ class UserEntity:
             id=changes.get("id", self.id),
             nome=changes.get("nome", self.nome),
             email=changes.get("email", self.email),
-            password=changes.get("password", self.password),
             is_active=changes.get("is_active", self.is_active),
             created_at=self.created_at,
             updated_at=changes.get("updated_at", self.updated_at),

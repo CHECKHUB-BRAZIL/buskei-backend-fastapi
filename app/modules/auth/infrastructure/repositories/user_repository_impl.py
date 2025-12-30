@@ -5,6 +5,8 @@ from sqlalchemy import select
 from app.modules.auth.domain.entities.user_entity import UserEntity
 from app.modules.auth.domain.repositories.user_repository import UserRepository
 from app.modules.auth.infrastructure.models.user_model import UserModel
+from domain.read_models.user_credentials import UserCredentials
+from domain.value_objects import UserId, Email
 
 
 class UserRepositoryImpl(UserRepository):
@@ -16,40 +18,32 @@ class UserRepositoryImpl(UserRepository):
     - Executar operações no banco de dados
     - Tratar erros de persistência
     """
-    
+
     def __init__(self, db: Session):
         self._db = db
-    
-    async def create(self, user: UserEntity, hashed_password: str) -> UserEntity:
+
+    async def create(self, user: UserEntity) -> UserEntity:
         """
         Cria um novo usuário no banco.
         
         Args:
             user: Entidade do usuário
-            hashed_password: Hash da senha
             
         Returns:
             UserEntity: Entidade do usuário criado
         """
-        
         # Converte entidade para model
-        user_model = UserModel(
-            id=user.id,
-            nome=user.nome,
-            email=user.email,
-            senha_hash=hashed_password,
-            is_active=user.is_active,
-        )
-        
+        model = UserModel.from_entity(user)
+
         # Persiste no banco
-        self._db.add(user_model)
+        self._db.add(model)
         self._db.commit()
-        self._db.refresh(user_model)
-        
+        self._db.refresh(model)
+
         # Converte model para entidade
-        return self._model_to_entity(user_model)
-    
-    async def get_by_id(self, user_id: str) -> Optional[UserEntity]:
+        return model.to_entity()
+
+    async def get_by_id(self, user_id: UserId) -> Optional[UserEntity]:
         """
         Busca usuário por ID.
         
@@ -59,17 +53,12 @@ class UserRepositoryImpl(UserRepository):
         Returns:
             Optional[UserEntity]: Entidade do usuário ou None
         """
-        
-        stmt = select(UserModel).where(UserModel.id == user_id)
-        result = self._db.execute(stmt)
-        user_model = result.scalar_one_or_none()
-        
-        if not user_model:
-            return None
-        
-        return self._model_to_entity(user_model)
-    
-    async def get_by_email(self, email: str) -> Optional[UserEntity]:
+        stmt = select(UserModel).where(UserModel.id == user_id.value)
+        model = self._db.execute(stmt).scalar_one_or_none()
+
+        return model.to_entity() if model else None
+
+    async def get_by_email(self, email: Email) -> Optional[UserEntity]:
         """
         Busca usuário por email.
         
@@ -79,17 +68,12 @@ class UserRepositoryImpl(UserRepository):
         Returns:
             Optional[UserEntity]: Entidade do usuário ou None
         """
-        
-        stmt = select(UserModel).where(UserModel.email == email.lower())
-        result = self._db.execute(stmt)
-        user_model = result.scalar_one_or_none()
-        
-        if not user_model:
-            return None
-        
-        return self._model_to_entity(user_model)
-    
-    async def exists_by_email(self, email: str) -> bool:
+        stmt = select(UserModel).where(UserModel.email == email.value)
+        model = self._db.execute(stmt).scalar_one_or_none()
+
+        return model.to_entity() if model else None
+
+    async def exists_by_email(self, email: Email) -> bool:
         """
         Verifica se email já existe.
         
@@ -99,11 +83,30 @@ class UserRepositoryImpl(UserRepository):
         Returns:
             bool: True se email existe
         """
-        
-        stmt = select(UserModel.id).where(UserModel.email == email.lower())
-        result = self._db.execute(stmt)
-        return result.scalar_one_or_none() is not None
-    
+        stmt = select(UserModel.id).where(UserModel.email == email.value)
+        return self._db.execute(stmt).scalar_one_or_none() is not None
+
+    async def get_credentials_by_email(
+        self, email: Email
+    ) -> Optional[UserCredentials]:
+
+        stmt = select(
+            UserModel.id,
+            UserModel.senha_hash,
+            UserModel.is_active,
+        ).where(UserModel.email == email.value)
+
+        row = self._db.execute(stmt).first()
+
+        if not row:
+            return None
+
+        return UserCredentials(
+            user_id=UserId(row.id),
+            password_hash=row.senha_hash,
+            is_active=row.is_active,
+        )
+
     async def update(self, user: UserEntity) -> UserEntity:
         """
         Atualiza dados do usuário.
@@ -155,37 +158,3 @@ class UserRepositoryImpl(UserRepository):
         
         return True
     
-    async def get_password_hash(self, user_id: str) -> Optional[str]:
-        """
-        Retorna o hash da senha do usuário.
-        
-        Args:
-            user_id: ID do usuário
-            
-        Returns:
-            Optional[str]: Hash da senha ou None
-        """
-        
-        stmt = select(UserModel.senha_hash).where(UserModel.id == user_id)
-        result = self._db.execute(stmt)
-        return result.scalar_one_or_none()
-    
-    def _model_to_entity(self, model: UserModel) -> UserEntity:
-        """
-        Converte UserModel (ORM) para UserEntity (domínio).
-        
-        Args:
-            model: Model do SQLAlchemy
-            
-        Returns:
-            UserEntity: Entidade de domínio
-        """
-        
-        return UserEntity(
-            id=model.id,
-            nome=model.nome,
-            email=model.email,
-            is_active=model.is_active,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-        )
