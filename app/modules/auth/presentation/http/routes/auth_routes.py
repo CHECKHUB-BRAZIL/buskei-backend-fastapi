@@ -8,6 +8,9 @@ from app.modules.auth.application.dtos import (
     RegisterResponseDTO,
     UserResponseDTO,
 )
+from app.modules.auth.application.dtos.login_dto import LoginInputDTO
+from app.modules.auth.application.dtos.refreshtokenrequest_dto import RefreshTokenRequestDTO
+from app.modules.auth.application.dtos.refreshtokenresponse_dto import RefreshTokenResponseDTO
 from app.modules.auth.application.usecases import (
     LoginUseCase,
     RegisterUseCase,
@@ -68,24 +71,19 @@ async def login(
     
     try:
         # Executa caso de uso
-        user = await login_uc.execute(
-            email=credentials.email,
-            senha=credentials.senha,
+        result = await login_uc.execute(
+            LoginInputDTO(
+                email=credentials.email,
+                password=credentials.senha,
+            )
         )
-        
         # Gera tokens
-        access_token = jwt_handler.create_access_token(user.id)
-        refresh_token = jwt_handler.create_refresh_token(user.id)
+        access_token = jwt_handler.create_access_token(result.user_id)
+        refresh_token = jwt_handler.create_refresh_token(result.user_id)
         
         # Monta response
         return LoginResponseDTO(
-            user=UserResponseDTO(
-                id=user.id,
-                nome=user.nome,
-                email=user.email,
-                is_active=user.is_active,
-                created_at=user.created_at.isoformat() if user.created_at else None,
-            ),
+            user_id=result.user_id,
             access_token=access_token,
             refresh_token=refresh_token,
             token_type="Bearer",
@@ -220,13 +218,13 @@ async def get_me(current_user: CurrentUser):
 
 @router.post(
     "/refresh",
-    response_model=dict,
+    response_model=RefreshTokenResponseDTO,
     status_code=status.HTTP_200_OK,
     summary="Renovar token de acesso",
     description="Gera novo access token usando refresh token",
 )
 async def refresh_token(
-    refresh_token: str,
+    data: RefreshTokenRequestDTO,
     jwt_handler: Annotated[JWTHandler, Depends(get_jwt_handler)],
 ):
     """
@@ -248,25 +246,23 @@ async def refresh_token(
     **Erros:**
     - 401: Refresh token inválido ou expirado
     """
+    # Valida refresh token
+    from app.core.constants import TOKEN_TYPE_REFRESH
+
+    token = data.refresh_token
+
+    if not jwt_handler.verify_token_type(token, TOKEN_TYPE_REFRESH):
+        raise UnauthorizedException("Refresh token inválido")
+
+    # Extrai user_id
+    user_id = jwt_handler.get_user_id_from_token(token)
     
-    try:
-        # Valida refresh token
-        from app.core.constants import TOKEN_TYPE_REFRESH
-        
-        if not jwt_handler.verify_token_type(refresh_token, TOKEN_TYPE_REFRESH):
-            raise UnauthorizedException("Refresh token inválido")
-        
-        # Extrai user_id
-        user_id = jwt_handler.get_user_id_from_token(refresh_token)
-        
-        # Gera novo access token
-        new_access_token = jwt_handler.create_access_token(user_id)
-        
-        return {
-            "access_token": new_access_token,
-            "token_type": "Bearer",
-            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        }
-        
-    except Exception as e:
-        raise UnauthorizedException("Não foi possível renovar o token")
+    # Gera novo access token
+    new_access_token = jwt_handler.create_access_token(user_id)
+    
+    return {
+        "access_token": new_access_token,
+        "token_type": "Bearer",
+        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    }
+    
