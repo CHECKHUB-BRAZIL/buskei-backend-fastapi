@@ -2,9 +2,9 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from app.modules.auth.domain.entities.user_entity import UserEntity
+from app.modules.auth.domain.read_models.user_credentials import UserCredentials
 from app.modules.auth.domain.value_objects.user_id_vo import UserId
 from app.modules.auth.domain.value_objects.email_vo import Email
-from domain.read_models.user_credentials import UserCredentials
 
 
 class UserRepository(ABC):

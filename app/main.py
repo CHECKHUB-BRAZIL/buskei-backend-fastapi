@@ -13,7 +13,7 @@ from app.shared.presentation.middlewares.error_handler import (
     generic_exception_handler,
 )
 from app.modules.auth.domain.exceptions.auth_exceptions import AuthException
-from app.modules.auth.presentation.routes import auth_routes
+from app.modules.auth.presentation.http.routes import auth_routes
 
 
 @asynccontextmanager

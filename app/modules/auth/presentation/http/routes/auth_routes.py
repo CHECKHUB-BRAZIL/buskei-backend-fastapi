@@ -2,19 +2,18 @@ from fastapi import APIRouter, Depends, status, Response
 from typing import Annotated
 
 from app.modules.auth.application.dtos import (
-    LoginRequestDTO,
-    LoginResponseDTO,
-    RegisterRequestDTO,
-    RegisterResponseDTO,
-    UserResponseDTO,
+    LoginInputDTO,
+    LoginResultDTO,
+    RegisterInputDTO,
+    RegisterResultDTO,
+    CurrentUserResultDTO,
+    RefreshTokenRequestDTO,
+    RefreshTokenResponseDTO,
 )
-from app.modules.auth.application.dtos.login_dto import LoginInputDTO
-from app.modules.auth.application.dtos.refreshtokenrequest_dto import RefreshTokenRequestDTO
-from app.modules.auth.application.dtos.refreshtokenresponse_dto import RefreshTokenResponseDTO
+
 from app.modules.auth.application.usecases import (
     LoginUseCase,
     RegisterUseCase,
-    LogoutUseCase,
 )
 from app.modules.auth.infrastructure.security.jwt_handler import JWTHandler
 from app.modules.auth.domain.exceptions.auth_exceptions import (
@@ -23,13 +22,8 @@ from app.modules.auth.domain.exceptions.auth_exceptions import (
     UserNotFoundException,
     InactiveUserException,
 )
-from app.modules.auth.presentation.dependencies.auth_deps import (
-    get_login_usecase,
-    get_register_usecase,
-    get_logout_usecase,
-    get_jwt_handler,
-    CurrentUser,
-)
+
+from app.modules.auth.presentation.http.dependencies.auth_deps import CurrentUser, get_jwt_handler, get_login_usecase, get_register_usecase
 from app.shared.presentation.exceptions.http_exceptions import (
     UnauthorizedException,
     ConflictException,
@@ -43,13 +37,13 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post(
     "/login",
-    response_model=LoginResponseDTO,
+    response_model=LoginResultDTO,
     status_code=status.HTTP_200_OK,
     summary="Login de usuário",
     description="Autentica usuário e retorna tokens de acesso",
 )
 async def login(
-    credentials: LoginRequestDTO,
+    credentials: LoginInputDTO,
     login_uc: Annotated[LoginUseCase, Depends(get_login_usecase)],
     jwt_handler: Annotated[JWTHandler, Depends(get_jwt_handler)],
 ):
@@ -82,7 +76,7 @@ async def login(
         refresh_token = jwt_handler.create_refresh_token(result.user_id)
         
         # Monta response
-        return LoginResponseDTO(
+        return LoginResultDTO(
             user_id=result.user_id,
             access_token=access_token,
             refresh_token=refresh_token,
@@ -100,13 +94,13 @@ async def login(
 
 @router.post(
     "/register",
-    response_model=RegisterResponseDTO,
+    response_model=RegisterResultDTO,
     status_code=status.HTTP_201_CREATED,
     summary="Registro de novo usuário",
     description="Cria uma nova conta de usuário",
 )
 async def register(
-    data: RegisterRequestDTO,
+    data: RegisterInputDTO,
     register_uc: Annotated[RegisterUseCase, Depends(get_register_usecase)],
     jwt_handler: Annotated[JWTHandler, Depends(get_jwt_handler)],
 ):
@@ -139,8 +133,8 @@ async def register(
         refresh_token = jwt_handler.create_refresh_token(user.id)
         
         # Monta response
-        return RegisterResponseDTO(
-            user=UserResponseDTO(
+        return RegisterResultDTO(
+            user=CurrentUserResultDTO(
                 id=user.id,
                 nome=user.nome,
                 email=user.email,
@@ -159,36 +153,9 @@ async def register(
         raise BadRequestException(str(e))
 
 
-@router.post(
-    "/logout",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Logout de usuário",
-    description="Encerra sessão do usuário",
-)
-async def logout(
-    current_user: CurrentUser,
-    logout_uc: Annotated[LogoutUseCase, Depends(get_logout_usecase)],
-):
-    """
-    ## Logout
-    
-    Encerra a sessão do usuário autenticado.
-    
-    **Requer:** Token de autenticação válido
-    
-    **Nota:** Como usamos JWT stateless, o logout é tratado
-    principalmente no cliente (removendo o token).
-    
-    **Retorna:** Status 204 (No Content)
-    """
-    
-    await logout_uc.execute(current_user.id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
 @router.get(
     "/me",
-    response_model=UserResponseDTO,
+    response_model=CurrentUserResultDTO,
     status_code=status.HTTP_200_OK,
     summary="Obter usuário atual",
     description="Retorna dados do usuário autenticado",
@@ -207,7 +174,7 @@ async def get_me(current_user: CurrentUser):
     - 401: Token inválido ou expirado
     """
     
-    return UserResponseDTO(
+    return CurrentUserResultDTO(
         id=current_user.id,
         nome=current_user.nome,
         email=current_user.email,

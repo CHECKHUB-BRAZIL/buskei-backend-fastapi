@@ -1,18 +1,14 @@
-from app.modules.auth.application.dtos.register_dto import (
-    RegisterInputDTO,
-    RegisterResultDTO,
-)
+from app.modules.auth.application.dtos.register_dto import RegisterInputDTO
+
+from app.modules.auth.application.dtos.register_result_dto import RegisterResultDTO
 from app.modules.auth.domain.entities.user_entity import UserEntity
 from app.modules.auth.domain.repositories.user_repository import UserRepository
-from app.modules.auth.domain.value_objects import (
-    UserId,
-    Name,
-    Email,
-    Password,
-)
+
 from app.modules.auth.domain.exceptions.auth_exceptions import (
     UserAlreadyExistsException,
 )
+from app.modules.auth.domain.value_objects.password_vo import Password
+from app.modules.auth.domain.value_objects.user_id_vo import UserId
 from app.modules.auth.infrastructure.security.password_hasher import PasswordHasher
 
 

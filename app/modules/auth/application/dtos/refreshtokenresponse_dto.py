@@ -1,4 +1,4 @@
-from app.shared.infrastructure.database.base import BaseModel
+from pydantic import BaseModel
 
 class RefreshTokenResponseDTO(BaseModel):
     access_token: str

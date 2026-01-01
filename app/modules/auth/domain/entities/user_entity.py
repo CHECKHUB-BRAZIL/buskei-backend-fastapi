@@ -2,9 +2,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
-from domain.value_objects.user_id_vo import UserId
-from domain.value_objects.name_vo import Name
-from domain.value_objects.email_vo import Email
+from app.modules.auth.domain.value_objects.email_vo import Email
+from app.modules.auth.domain.value_objects.name_vo import Name
+from app.modules.auth.domain.value_objects.user_id_vo import UserId
 
 
 @dataclass(frozen=True)

@@ -4,9 +4,12 @@ from sqlalchemy import Column, String, Boolean
 from sqlalchemy.orm import validates
 from sqlalchemy.dialects.postgresql import UUID
 
+from app.modules.auth.domain.entities.user_entity import UserEntity
+from app.modules.auth.domain.value_objects.email_vo import Email
+from app.modules.auth.domain.value_objects.name_vo import Name
+from app.modules.auth.domain.value_objects.user_id_vo import UserId
 from app.shared.infrastructure.database.base import BaseModel
-from domain.entities.user_entity import UserEntity
-from domain.value_objects import UserId, Name, Email
+
 
 
 class UserModel(BaseModel):

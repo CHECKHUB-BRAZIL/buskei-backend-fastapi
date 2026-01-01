@@ -3,10 +3,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from app.modules.auth.domain.entities.user_entity import UserEntity
+from app.modules.auth.domain.read_models.user_credentials import UserCredentials
 from app.modules.auth.domain.repositories.user_repository import UserRepository
+from app.modules.auth.domain.value_objects.email_vo import Email
+from app.modules.auth.domain.value_objects.user_id_vo import UserId
 from app.modules.auth.infrastructure.models.user_model import UserModel
-from domain.read_models.user_credentials import UserCredentials
-from domain.value_objects import UserId, Email
+
 
 
 class UserRepositoryImpl(UserRepository):
