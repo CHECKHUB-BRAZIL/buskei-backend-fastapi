@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from app.modules.auth.domain.entities.user_entity import UserEntity
 from app.modules.auth.domain.value_objects.email_vo import Email
 from app.modules.auth.domain.value_objects.name_vo import Name
+from app.modules.auth.domain.value_objects.password_vo import Password
 from app.modules.auth.domain.value_objects.user_id_vo import UserId
 from app.shared.infrastructure.database.base import BaseModel
 
@@ -26,7 +27,7 @@ class UserModel(BaseModel):
 
     nome = Column(String(100), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    senha_hash = Column(String(255), nullable=False)
+    password = Column(String(255), nullable=False)
     is_active = Column(Boolean, nullable=False, default=True)
 
     @validates("email")
@@ -42,6 +43,7 @@ class UserModel(BaseModel):
             id=UserId(self.id),
             nome=Name(self.nome),
             email=Email(self.email),
+            password=Password(self.password),
             is_active=self.is_active,
             created_at=self.created_at,
             updated_at=self.updated_at,
@@ -53,6 +55,8 @@ class UserModel(BaseModel):
             id=user.id.value,
             nome=user.nome.value,
             email=user.email.value,
-            senha_hash=user.password.hashed,
+            password=user.password.value,
             is_active=user.is_active,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
         )

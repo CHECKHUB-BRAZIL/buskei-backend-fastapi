@@ -1,6 +1,6 @@
 from app.modules.auth.domain.exceptions.auth_exceptions import UserNotFoundException
 from app.modules.auth.domain.repositories.user_repository import UserRepository
-from app.modules.auth.application.dtos.current_user_result_dto import (
+from app.modules.auth.application.dtos.currentuserresult_dto import (
     CurrentUserResultDTO
 )
 from app.modules.auth.domain.value_objects.user_id_vo import UserId

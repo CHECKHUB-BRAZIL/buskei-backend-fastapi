@@ -1,4 +1,4 @@
-from app.modules.auth.application.dtos.login_result_dto import LoginResultDTO
+from app.modules.auth.application.dtos.loginresult_dto import LoginResultDTO
 from app.modules.auth.domain.repositories.user_repository import UserRepository
 from app.modules.auth.domain.value_objects.email_vo import Email
 from app.modules.auth.domain.exceptions.auth_exceptions import (

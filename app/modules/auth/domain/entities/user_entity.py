@@ -4,6 +4,7 @@ from typing import Optional
 
 from app.modules.auth.domain.value_objects.email_vo import Email
 from app.modules.auth.domain.value_objects.name_vo import Name
+from app.modules.auth.domain.value_objects.password_vo import Password
 from app.modules.auth.domain.value_objects.user_id_vo import UserId
 
 
@@ -31,6 +32,7 @@ class UserEntity:
     id: UserId
     nome: Name
     email: Email
+    password: Password
     is_active: bool = True
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
@@ -112,6 +114,7 @@ class UserEntity:
             id=changes.get("id", self.id),
             nome=changes.get("nome", self.nome),
             email=changes.get("email", self.email),
+            password=changes.get("password", self.password),
             is_active=changes.get("is_active", self.is_active),
             created_at=self.created_at,
             updated_at=changes.get("updated_at", self.updated_at),

@@ -1,6 +1,6 @@
-from app.modules.auth.application.dtos.register_dto import RegisterInputDTO
+from app.modules.auth.application.dtos.registerinput_dto import RegisterInputDTO
 
-from app.modules.auth.application.dtos.register_result_dto import RegisterResultDTO
+from app.modules.auth.application.dtos.registerresult_dto import RegisterResultDTO
 from app.modules.auth.domain.entities.user_entity import UserEntity
 from app.modules.auth.domain.repositories.user_repository import UserRepository
 
@@ -76,10 +76,4 @@ class RegisterUseCase:
         created_user = await self._user_repository.create(user)
 
         # 6. Retorna DTO de saída
-        return RegisterResultDTO(
-            user_id=created_user.id,
-            nome=created_user.nome,
-            email=created_user.email,
-            is_active=created_user.is_active,
-            created_at=created_user.created_at,
-        )
+        return created_user

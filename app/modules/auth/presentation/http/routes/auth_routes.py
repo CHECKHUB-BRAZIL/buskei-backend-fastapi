@@ -1,21 +1,31 @@
-from fastapi import APIRouter, Depends, status, Response
+from fastapi import APIRouter, Depends, status, HTTPException
 from typing import Annotated
+import traceback
 
-from app.modules.auth.application.dtos import (
-    LoginInputDTO,
-    LoginResultDTO,
-    RegisterInputDTO,
-    RegisterResultDTO,
-    CurrentUserResultDTO,
-    RefreshTokenRequestDTO,
-    RefreshTokenResponseDTO,
-)
+# ===== Presentation (HTTP Schemas) =====
+from app.modules.auth.presentation.http.schemas.current_user_response_schema import CurrentUserResponse
+from app.modules.auth.presentation.http.schemas.login_request import LoginRequest
+from app.modules.auth.presentation.http.schemas.login_response import LoginResponse
+from app.modules.auth.presentation.http.schemas.refresh_token_request import RefreshTokenRequest
+from app.modules.auth.presentation.http.schemas.refresh_token_response import RefreshTokenResponse
+from app.modules.auth.presentation.http.schemas.register_request import RegisterRequest
+from app.modules.auth.presentation.http.schemas.register_response import RegisterResponse
 
+# ===== Application =====
 from app.modules.auth.application.usecases import (
     LoginUseCase,
     RegisterUseCase,
 )
-from app.modules.auth.infrastructure.security.jwt_handler import JWTHandler
+from app.modules.auth.application.dtos import (
+    LoginInputDTO,
+    RegisterInputDTO,
+)
+
+# ===== Domain =====
+from app.modules.auth.domain.value_objects.email_vo import Email
+from app.modules.auth.domain.value_objects.name_vo import Name
+from app.modules.auth.domain.value_objects.plain_password_vo import PlainPassword
+
 from app.modules.auth.domain.exceptions.auth_exceptions import (
     InvalidCredentialsException,
     UserAlreadyExistsException,
@@ -23,13 +33,24 @@ from app.modules.auth.domain.exceptions.auth_exceptions import (
     InactiveUserException,
 )
 
-from app.modules.auth.presentation.http.dependencies.auth_deps import CurrentUser, get_jwt_handler, get_login_usecase, get_register_usecase
+# ===== Infrastructure =====
+from app.modules.auth.infrastructure.security.jwt_handler import JWTHandler
+
+# ===== Dependencies & Exceptions =====
+from app.modules.auth.presentation.http.dependencies.auth_deps import (
+    CurrentUser,
+    get_jwt_handler,
+    get_login_usecase,
+    get_register_usecase,
+)
+
 from app.shared.presentation.exceptions.http_exceptions import (
     UnauthorizedException,
     ConflictException,
     BadRequestException,
 )
 from app.core.config import settings
+from app.core.constants import TOKEN_TYPE_REFRESH
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -37,199 +58,93 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post(
     "/login",
-    response_model=LoginResultDTO,
+    response_model=LoginResponse,
     status_code=status.HTTP_200_OK,
-    summary="Login de usuário",
-    description="Autentica usuário e retorna tokens de acesso",
 )
 async def login(
-    credentials: LoginInputDTO,
+    data: LoginRequest,
     login_uc: Annotated[LoginUseCase, Depends(get_login_usecase)],
     jwt_handler: Annotated[JWTHandler, Depends(get_jwt_handler)],
 ):
-    """
-    ## Login
-    
-    Autentica usuário com email e senha.
-    
-    **Retorna:**
-    - Dados do usuário
-    - Access token (JWT)
-    - Refresh token (JWT)
-    - Tempo de expiração
-    
-    **Erros:**
-    - 401: Credenciais inválidas
-    - 403: Usuário inativo
-    """
-    
     try:
-        # Executa caso de uso
-        result = await login_uc.execute(
-            LoginInputDTO(
-                email=credentials.email,
-                password=credentials.senha,
-            )
+        input_dto = LoginInputDTO(
+            email=Email(data.email),
+            password=PlainPassword(data.senha),
         )
-        # Gera tokens
-        access_token = jwt_handler.create_access_token(result.user_id)
-        refresh_token = jwt_handler.create_refresh_token(result.user_id)
-        
-        # Monta response
-        return LoginResultDTO(
-            user_id=result.user_id,
-            access_token=access_token,
-            refresh_token=refresh_token,
+
+        result = await login_uc.execute(input_dto)
+
+        return LoginResponse(
+            user_id=str(result.user_id.value),
+            access_token=jwt_handler.create_access_token(str(result.user_id.value)),
+            refresh_token=jwt_handler.create_refresh_token(str(result.user_id.value)),
             token_type="Bearer",
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
-        
-    except (InvalidCredentialsException, UserNotFoundException) as e:
+
+    except (InvalidCredentialsException, UserNotFoundException):
         raise UnauthorizedException("Credenciais inválidas")
-    except InactiveUserException as e:
+    except InactiveUserException:
         raise UnauthorizedException("Usuário inativo")
     except ValueError as e:
         raise BadRequestException(str(e))
 
-
 @router.post(
     "/register",
-    response_model=RegisterResultDTO,
+    response_model=RegisterResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Registro de novo usuário",
-    description="Cria uma nova conta de usuário",
 )
 async def register(
-    data: RegisterInputDTO,
+    data: RegisterRequest,
     register_uc: Annotated[RegisterUseCase, Depends(get_register_usecase)],
     jwt_handler: Annotated[JWTHandler, Depends(get_jwt_handler)],
 ):
-    """
-    ## Registro
-    
-    Cria uma nova conta de usuário.
-    
-    **Retorna:**
-    - Dados do usuário criado
-    - Access token (JWT)
-    - Refresh token (JWT)
-    - Mensagem de sucesso
-    
-    **Erros:**
-    - 400: Dados inválidos
-    - 409: Email já cadastrado
-    """
-    
     try:
-        # Executa caso de uso
-        user = await register_uc.execute(
-            nome=data.nome,
-            email=data.email,
-            senha=data.senha,
+        input_dto = RegisterInputDTO(
+            nome=Name(data.nome),
+            email=Email(data.email),
+            password=PlainPassword(data.senha),
         )
-        
-        # Gera tokens
-        access_token = jwt_handler.create_access_token(user.id)
-        refresh_token = jwt_handler.create_refresh_token(user.id)
-        
-        # Monta response
-        return RegisterResultDTO(
-            user=CurrentUserResultDTO(
-                id=user.id,
-                nome=user.nome,
-                email=user.email,
-                is_active=user.is_active,
-                created_at=user.created_at.isoformat() if user.created_at else None,
-            ),
-            access_token=access_token,
-            refresh_token=refresh_token,
-            token_type="Bearer",
-            message="Usuário criado com sucesso",
+
+        user = await register_uc.execute(input_dto)
+
+        return RegisterResponse(
+            user=CurrentUserResponse.from_domain(user),
+            access_token=jwt_handler.create_access_token(str(user.id.value)),
+            refresh_token=jwt_handler.create_refresh_token(str(user.id.value)),
         )
-        
+
     except UserAlreadyExistsException as e:
         raise ConflictException(str(e))
     except ValueError as e:
         raise BadRequestException(str(e))
-
+    except Exception as e:
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail="Erro interno")
 
 @router.get(
     "/me",
-    response_model=CurrentUserResultDTO,
-    status_code=status.HTTP_200_OK,
-    summary="Obter usuário atual",
-    description="Retorna dados do usuário autenticado",
+    response_model=CurrentUserResponse,
 )
 async def get_me(current_user: CurrentUser):
-    """
-    ## Usuário Atual
-    
-    Retorna os dados do usuário autenticado.
-    
-    **Requer:** Token de autenticação válido
-    
-    **Retorna:** Dados do usuário
-    
-    **Erros:**
-    - 401: Token inválido ou expirado
-    """
-    
-    return CurrentUserResultDTO(
-        id=current_user.id,
-        nome=current_user.nome,
-        email=current_user.email,
-        is_active=current_user.is_active,
-        created_at=current_user.created_at.isoformat() if current_user.created_at else None,
-    )
+    return CurrentUserResponse.from_domain(current_user)
 
 
 @router.post(
     "/refresh",
-    response_model=RefreshTokenResponseDTO,
-    status_code=status.HTTP_200_OK,
-    summary="Renovar token de acesso",
-    description="Gera novo access token usando refresh token",
+    response_model=RefreshTokenResponse,
 )
 async def refresh_token(
-    data: RefreshTokenRequestDTO,
+    data: RefreshTokenRequest,
     jwt_handler: Annotated[JWTHandler, Depends(get_jwt_handler)],
 ):
-    """
-    ## Refresh Token
-    
-    Gera um novo access token usando o refresh token.
-    
-    **Body:**
-```json
-    {
-        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-    }
-```
-    
-    **Retorna:**
-    - Novo access token
-    - Tempo de expiração
-    
-    **Erros:**
-    - 401: Refresh token inválido ou expirado
-    """
-    # Valida refresh token
-    from app.core.constants import TOKEN_TYPE_REFRESH
-
-    token = data.refresh_token
-
-    if not jwt_handler.verify_token_type(token, TOKEN_TYPE_REFRESH):
+    if not jwt_handler.verify_token_type(data.refresh_token, TOKEN_TYPE_REFRESH):
         raise UnauthorizedException("Refresh token inválido")
 
-    # Extrai user_id
-    user_id = jwt_handler.get_user_id_from_token(token)
-    
-    # Gera novo access token
-    new_access_token = jwt_handler.create_access_token(user_id)
-    
-    return {
-        "access_token": new_access_token,
-        "token_type": "Bearer",
-        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    }
-    
+    user_id = jwt_handler.get_user_id_from_token(data.refresh_token)
+
+    return RefreshTokenResponse(
+        access_token=jwt_handler.create_access_token(user_id),
+        token_type="Bearer",
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
