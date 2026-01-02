@@ -59,35 +59,37 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post(
     "/login",
     response_model=LoginResponse,
-    status_code=status.HTTP_200_OK,
 )
 async def login(
-    data: LoginRequest,
+    credentials: LoginRequest,
     login_uc: Annotated[LoginUseCase, Depends(get_login_usecase)],
     jwt_handler: Annotated[JWTHandler, Depends(get_jwt_handler)],
 ):
-    try:
-        input_dto = LoginInputDTO(
-            email=Email(data.email),
-            password=PlainPassword(data.senha),
-        )
+    input_dto = LoginInputDTO(
+        email=Email(credentials.email),
+        password=PlainPassword(credentials.senha),
+    )
 
-        result = await login_uc.execute(input_dto)
+    result = await login_uc.execute(input_dto)
 
-        return LoginResponse(
-            user_id=str(result.user_id.value),
-            access_token=jwt_handler.create_access_token(str(result.user_id.value)),
-            refresh_token=jwt_handler.create_refresh_token(str(result.user_id.value)),
-            token_type="Bearer",
-            expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        )
+    access_token = jwt_handler.create_access_token(str(result.user_id.value))
+    refresh_token = jwt_handler.create_refresh_token(str(result.user_id.value))
 
-    except (InvalidCredentialsException, UserNotFoundException):
-        raise UnauthorizedException("Credenciais inválidas")
-    except InactiveUserException:
-        raise UnauthorizedException("Usuário inativo")
-    except ValueError as e:
-        raise BadRequestException(str(e))
+    user_response = CurrentUserResponse(
+        id=str(result.user_id.value),
+        nome=result.nome.value,
+        email=result.email.value,
+        is_active=result.is_active,
+        created_at=None,
+    )
+
+    return LoginResponse(
+        user=user_response,
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="Bearer",
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
 
 @router.post(
     "/register",

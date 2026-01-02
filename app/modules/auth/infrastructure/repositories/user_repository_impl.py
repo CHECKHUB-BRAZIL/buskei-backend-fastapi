@@ -89,12 +89,13 @@ class UserRepositoryImpl(UserRepository):
         return self._db.execute(stmt).scalar_one_or_none() is not None
 
     async def get_credentials_by_email(
-        self, email: Email
+        self,
+        email: Email,
     ) -> Optional[UserCredentials]:
 
         stmt = select(
             UserModel.id,
-            UserModel.senha_hash,
+            UserModel.password,
             UserModel.is_active,
         ).where(UserModel.email == email.value)
 
@@ -105,7 +106,7 @@ class UserRepositoryImpl(UserRepository):
 
         return UserCredentials(
             user_id=UserId(row.id),
-            password_hash=row.senha_hash,
+            password_hash=row.password,
             is_active=row.is_active,
         )
 
@@ -120,7 +121,7 @@ class UserRepositoryImpl(UserRepository):
             UserEntity: Entidade atualizada
         """
         
-        stmt = select(UserModel).where(UserModel.id == user.id)
+        stmt = select(UserModel).where(UserModel.id == user.id.value)
         result = self._db.execute(stmt)
         user_model = result.scalar_one_or_none()
         
@@ -128,16 +129,16 @@ class UserRepositoryImpl(UserRepository):
             raise ValueError(f"Usuário {user.id} não encontrado")
         
         # Atualiza campos
-        user_model.nome = user.nome
-        user_model.email = user.email
+        user_model.nome = user.nome.value
+        user_model.email = user.email.value
         user_model.is_active = user.is_active
         
         self._db.commit()
         self._db.refresh(user_model)
         
-        return self._model_to_entity(user_model)
+        return user_model.to_entity()
     
-    async def delete(self, user_id: str) -> bool:
+    async def delete(self, user_id: UserId) -> bool:
         """
         Remove usuário do banco.
         
@@ -148,7 +149,7 @@ class UserRepositoryImpl(UserRepository):
             bool: True se removido com sucesso
         """
         
-        stmt = select(UserModel).where(UserModel.id == user_id)
+        stmt = select(UserModel).where(UserModel.id == user_id.value)
         result = self._db.execute(stmt)
         user_model = result.scalar_one_or_none()
         

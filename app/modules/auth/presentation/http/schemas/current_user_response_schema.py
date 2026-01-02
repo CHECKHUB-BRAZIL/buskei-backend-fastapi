@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -6,7 +7,7 @@ class CurrentUserResponse(BaseModel):
     nome: str
     email: str
     is_active: bool
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     @classmethod
     def from_domain(cls, user):
