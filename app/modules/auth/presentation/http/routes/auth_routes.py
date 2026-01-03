@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, status, HTTPException
 from typing import Annotated
+from fastapi.security import HTTPBearer
 import traceback
 
 # ===== Presentation (HTTP Schemas) =====
@@ -124,9 +125,12 @@ async def register(
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail="Erro interno")
 
+bearer_scheme = HTTPBearer()
+
 @router.get(
     "/me",
     response_model=CurrentUserResponse,
+    dependencies=[Depends(bearer_scheme)],
 )
 async def get_me(current_user: CurrentUser):
     return CurrentUserResponse.from_domain(current_user)

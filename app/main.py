@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from fastapi.security import HTTPBearer
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
@@ -39,6 +40,7 @@ async def lifespan(app: FastAPI):
     # Shutdown
     print("👋 Encerrando aplicação...")
 
+bearer_scheme = HTTPBearer()
 
 # Cria aplicação FastAPI
 app = FastAPI(

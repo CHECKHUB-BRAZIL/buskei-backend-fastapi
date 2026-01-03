@@ -71,11 +71,4 @@ class GetCurrentUserUseCase:
         if not user:
             raise UserNotFoundException(user_id)
 
-        # 4. Retorna DTO (não expõe entidade)
-        return CurrentUserResultDTO(
-            user_id=user.id,
-            nome=user.nome,
-            email=user.email,
-            is_active=user.is_active,
-            created_at=user.created_at,
-        )
+        return user
