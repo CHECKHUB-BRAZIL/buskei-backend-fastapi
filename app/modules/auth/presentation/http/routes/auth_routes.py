@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, status, HTTPException
 from typing import Annotated
-from fastapi.security import HTTPBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import traceback
 
 # ===== Presentation (HTTP Schemas) =====
@@ -27,12 +27,7 @@ from app.modules.auth.domain.value_objects.email_vo import Email
 from app.modules.auth.domain.value_objects.name_vo import Name
 from app.modules.auth.domain.value_objects.plain_password_vo import PlainPassword
 
-from app.modules.auth.domain.exceptions.auth_exceptions import (
-    InvalidCredentialsException,
-    UserAlreadyExistsException,
-    UserNotFoundException,
-    InactiveUserException,
-)
+from app.modules.auth.domain.exceptions.auth_exceptions import UserAlreadyExistsException
 
 # ===== Infrastructure =====
 from app.modules.auth.infrastructure.security.jwt_handler import JWTHandler
@@ -55,7 +50,7 @@ from app.core.constants import TOKEN_TYPE_REFRESH
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-
+bearer_scheme = HTTPBearer()
 
 @router.post(
     "/login",
@@ -125,8 +120,6 @@ async def register(
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail="Erro interno")
 
-bearer_scheme = HTTPBearer()
-
 @router.get(
     "/me",
     response_model=CurrentUserResponse,
@@ -154,3 +147,11 @@ async def refresh_token(
         token_type="Bearer",
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(bearer_scheme)],
+)
+async def logout():
+    return
