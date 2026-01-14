@@ -13,6 +13,7 @@ from app.modules.auth.application.usecases.register_usecase import RegisterUseCa
 from app.modules.auth.application.usecases.getcurrentuser_usecase import GetCurrentUserUseCase
 from app.modules.auth.domain.exceptions.auth_exceptions import InvalidTokenException
 from app.core.constants import TOKEN_TYPE_ACCESS
+from app.core.redis.redis_client import RedisClient
 
 
 # ============================================================
@@ -100,51 +101,61 @@ async def get_current_user(
     jwt_handler: JWTHandler = Depends(get_jwt_handler),
     get_user_uc: GetCurrentUserUseCase = Depends(get_current_user_usecase),
 ) -> UserEntity:
-    """
-    Dependency para obter usuário autenticado atual.
-    
-    Valida token JWT e retorna entidade do usuário.
-    
-    Raises:
-        HTTPException: Se token inválido ou usuário não encontrado
-    """
-    
+
     try:
-        # Verifica se é token de acesso
+        # 1. Blacklist (logout)
+        redis_client = RedisClient.get_client()
+
+        if redis_client.exists(f"blacklist:{token}"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token revogado",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # 2. Tipo do token
         if not jwt_handler.verify_token_type(token, TOKEN_TYPE_ACCESS):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token de acesso inválido",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
-        # Extrai user_id do token
+
+        # 3. User ID
         user_id = jwt_handler.get_user_id_from_token(token)
-        
-        # Busca usuário
+
+        # 4. Usuário
         user = await get_user_uc.execute(user_id)
-        
-        # Verifica se usuário está ativo
+
+        # 5. Ativo
         if not user.can_login():
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Usuário inativo",
             )
-        
+
         return user
-        
+
+    except HTTPException:
+        # 🔥 ESSENCIAL: deixa o FastAPI responder corretamente
+        raise
+
     except InvalidTokenException as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
         )
+
     except Exception as e:
+        # erro realmente inesperado
+        print("Erro inesperado:", e)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Não foi possível validar credenciais",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
 
 
 # Type aliases para facilitar uso
