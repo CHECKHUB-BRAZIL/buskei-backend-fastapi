@@ -1,5 +1,6 @@
 from typing import Annotated
 from fastapi import Depends, Header, HTTPException, status
+from redis import Redis
 from sqlalchemy.orm import Session
 
 from app.shared.infrastructure.database.session import get_db
@@ -13,7 +14,8 @@ from app.modules.auth.application.usecases.register_usecase import RegisterUseCa
 from app.modules.auth.application.usecases.getcurrentuser_usecase import GetCurrentUserUseCase
 from app.modules.auth.domain.exceptions.auth_exceptions import InvalidTokenException
 from app.core.constants import TOKEN_TYPE_ACCESS
-from app.core.redis.redis_client import RedisClient
+
+from app.infra.redis.dependencies import get_redis
 
 
 # ============================================================
@@ -100,13 +102,12 @@ async def get_current_user(
     token: str = Depends(get_token_from_header),
     jwt_handler: JWTHandler = Depends(get_jwt_handler),
     get_user_uc: GetCurrentUserUseCase = Depends(get_current_user_usecase),
+    redis: Redis = Depends(get_redis),
 ) -> UserEntity:
 
     try:
         # 1. Blacklist (logout)
-        redis_client = RedisClient.get_client()
-
-        if redis_client.exists(f"blacklist:{token}"):
+        if redis.exists(f"blacklist:{token}"):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token revogado",
@@ -137,7 +138,6 @@ async def get_current_user(
         return user
 
     except HTTPException:
-        # 🔥 ESSENCIAL: deixa o FastAPI responder corretamente
         raise
 
     except InvalidTokenException as e:
@@ -148,7 +148,6 @@ async def get_current_user(
         )
 
     except Exception as e:
-        # erro realmente inesperado
         print("Erro inesperado:", e)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

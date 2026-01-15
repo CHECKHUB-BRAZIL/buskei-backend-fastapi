@@ -65,3 +65,5 @@ dmypy.json
 
 # Ruff
 .ruff_cache/
+
+.pytest_cache/

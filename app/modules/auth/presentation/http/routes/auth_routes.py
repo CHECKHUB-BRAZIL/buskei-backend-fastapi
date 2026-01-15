@@ -1,12 +1,12 @@
 from datetime import datetime
-from time import timezone
 from fastapi import APIRouter, Depends, status, HTTPException
 from typing import Annotated
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import traceback
 
+from redis import Redis
+
 # ===== Presentation (HTTP Schemas) =====
-from app.core.redis.redis_client import RedisClient
 from app.modules.auth.presentation.http.schemas.current_user_response_schema import CurrentUserResponse
 from app.modules.auth.presentation.http.schemas.login_request import LoginRequest
 from app.modules.auth.presentation.http.schemas.login_response import LoginResponse
@@ -50,6 +50,8 @@ from app.shared.presentation.exceptions.http_exceptions import (
 )
 from app.core.config import settings
 from app.core.constants import TOKEN_TYPE_REFRESH
+
+from app.infra.redis.dependencies import get_redis
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -159,17 +161,16 @@ async def refresh_token(
 async def logout(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     jwt_handler: JWTHandler = Depends(get_jwt_handler),
+    redis: Redis = Depends(get_redis),
 ):
     token = credentials.credentials
-    redis_client = RedisClient.get_client()
 
     expires_at = jwt_handler.get_token_expiration(token)
-
     now = datetime.now(expires_at.tzinfo)
     ttl = int((expires_at - now).total_seconds())
 
     if ttl > 0:
-        redis_client.setex(
+        redis.setex(
             name=f"blacklist:{token}",
             time=ttl,
             value="true",

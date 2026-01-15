@@ -20,3 +20,7 @@ email-validator==2.1.0
 
 # Utilities
 python-dotenv==1.0.0
+
+pytest
+httpx<0.25
+pytest-cov
