@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
+import uuid
 
 from jose import JWTError, jwt
 
@@ -68,24 +69,15 @@ class JWTHandler:
     def create_refresh_token(self, user_id: str) -> str:
         expire = self._now() + timedelta(days=self._refresh_token_expire)
 
-        """
-        Cria token de refresh JWT.
-        
-        Args:
-            user_id: ID do usuário
-            
-        Returns:
-            str: Token JWT
-        """
-
-        claims = {
+        payload = {
             "sub": user_id,
             "type": TOKEN_TYPE_REFRESH,
+            "jti": str(uuid.uuid4()),
             "exp": expire,
             "iat": self._now(),
         }
 
-        return jwt.encode(claims, self._secret_key, algorithm=self._algorithm)
+        return jwt.encode(payload, self._secret_key, algorithm=self._algorithm)
 
     def decode_token(
         self,
@@ -206,3 +198,4 @@ class JWTHandler:
             return self._now() > expiration
         except InvalidTokenException:
             return True
+    

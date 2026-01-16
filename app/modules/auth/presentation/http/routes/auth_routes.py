@@ -10,6 +10,7 @@ from redis import Redis
 from app.modules.auth.presentation.http.schemas.current_user_response_schema import CurrentUserResponse
 from app.modules.auth.presentation.http.schemas.login_request import LoginRequest
 from app.modules.auth.presentation.http.schemas.login_response import LoginResponse
+from app.modules.auth.presentation.http.schemas.logout_request import LogoutRequest
 from app.modules.auth.presentation.http.schemas.refresh_token_request import RefreshTokenRequest
 from app.modules.auth.presentation.http.schemas.refresh_token_response import RefreshTokenResponse
 from app.modules.auth.presentation.http.schemas.register_request import RegisterRequest
@@ -49,7 +50,7 @@ from app.shared.presentation.exceptions.http_exceptions import (
     BadRequestException,
 )
 from app.core.config import settings
-from app.core.constants import TOKEN_TYPE_REFRESH
+from app.core.constants import TOKEN_TYPE_ACCESS, TOKEN_TYPE_REFRESH
 
 from app.infra.redis.dependencies import get_redis
 
@@ -65,6 +66,7 @@ async def login(
     credentials: LoginRequest,
     login_uc: Annotated[LoginUseCase, Depends(get_login_usecase)],
     jwt_handler: Annotated[JWTHandler, Depends(get_jwt_handler)],
+    redis: Annotated[Redis, Depends(get_redis)],
 ):
     input_dto = LoginInputDTO(
         email=Email(credentials.email),
@@ -73,11 +75,25 @@ async def login(
 
     result = await login_uc.execute(input_dto)
 
-    access_token = jwt_handler.create_access_token(str(result.user_id.value))
-    refresh_token = jwt_handler.create_refresh_token(str(result.user_id.value))
+    user_id = str(result.user_id.value)
+
+    access_token = jwt_handler.create_access_token(user_id)
+    refresh_token = jwt_handler.create_refresh_token(user_id)
+
+    # 🔹 decodifica refresh para pegar o jti
+    refresh_payload = jwt_handler.decode_token(
+        refresh_token,
+        expected_type=TOKEN_TYPE_REFRESH,
+    )
+
+    redis.setex(
+        name=f"refresh:{refresh_payload['jti']}",
+        time=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        value=user_id,
+    )
 
     user_response = CurrentUserResponse(
-        id=str(result.user_id.value),
+        id=user_id,
         nome=result.nome.value,
         email=result.email.value,
         is_active=result.is_active,
@@ -101,6 +117,7 @@ async def register(
     data: RegisterRequest,
     register_uc: Annotated[RegisterUseCase, Depends(get_register_usecase)],
     jwt_handler: Annotated[JWTHandler, Depends(get_jwt_handler)],
+    redis: Annotated[Redis, Depends(get_redis)],
 ):
     try:
         input_dto = RegisterInputDTO(
@@ -111,19 +128,36 @@ async def register(
 
         user = await register_uc.execute(input_dto)
 
+        user_id = str(user.id.value)
+
+        access_token = jwt_handler.create_access_token(user_id)
+        refresh_token = jwt_handler.create_refresh_token(user_id)
+
+        refresh_payload = jwt_handler.decode_token(
+            refresh_token,
+            expected_type=TOKEN_TYPE_REFRESH,
+        )
+
+        redis.setex(
+            name=f"refresh:{refresh_payload['jti']}",
+            time=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+            value=user_id,
+        )
+
         return RegisterResponse(
             user=CurrentUserResponse.from_domain(user),
-            access_token=jwt_handler.create_access_token(str(user.id.value)),
-            refresh_token=jwt_handler.create_refresh_token(str(user.id.value)),
+            access_token=access_token,
+            refresh_token=refresh_token,
         )
 
     except UserAlreadyExistsException as e:
         raise ConflictException(str(e))
     except ValueError as e:
         raise BadRequestException(str(e))
-    except Exception as e:
+    except Exception:
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail="Erro interno")
+
 
 @router.get(
     "/me",
@@ -141,14 +175,44 @@ async def get_me(current_user: CurrentUser):
 async def refresh_token(
     data: RefreshTokenRequest,
     jwt_handler: Annotated[JWTHandler, Depends(get_jwt_handler)],
+    redis: Annotated[Redis, Depends(get_redis)],
 ):
-    if not jwt_handler.verify_token_type(data.refresh_token, TOKEN_TYPE_REFRESH):
-        raise UnauthorizedException("Refresh token inválido")
+    payload = jwt_handler.decode_token(
+        data.refresh_token,
+        expected_type=TOKEN_TYPE_REFRESH,
+    )
 
-    user_id = jwt_handler.get_user_id_from_token(data.refresh_token)
+    jti = payload["jti"]
+    user_id = payload["sub"]
+
+    redis_key = f"refresh:{jti}"
+
+    # verifica se o refresh token ainda é válido
+    if not redis.exists(redis_key):
+        raise UnauthorizedException("Refresh token revogado")
+
+    # rotação: invalida o token antigo
+    redis.delete(redis_key)
+
+    # gera novos tokens
+    new_access_token = jwt_handler.create_access_token(user_id)
+    new_refresh_token = jwt_handler.create_refresh_token(user_id)
+
+    # salva novo refresh no Redis
+    new_payload = jwt_handler.decode_token(
+        new_refresh_token,
+        expected_type=TOKEN_TYPE_REFRESH,
+    )
+
+    redis.setex(
+        name=f"refresh:{new_payload['jti']}",
+        time=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        value=user_id,
+    )
 
     return RefreshTokenResponse(
-        access_token=jwt_handler.create_access_token(user_id),
+        access_token=new_access_token,
+        refresh_token=new_refresh_token,
         token_type="Bearer",
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
@@ -159,21 +223,43 @@ async def refresh_token(
     dependencies=[Depends(bearer_scheme)],
 )
 async def logout(
+    data: LogoutRequest,
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     jwt_handler: JWTHandler = Depends(get_jwt_handler),
     redis: Redis = Depends(get_redis),
 ):
-    token = credentials.credentials
+    access_token = credentials.credentials
 
-    expires_at = jwt_handler.get_token_expiration(token)
-    now = datetime.now(expires_at.tzinfo)
-    ttl = int((expires_at - now).total_seconds())
+    # 1 Decodifica access token
+    access_payload = jwt_handler.decode_token(
+        access_token,
+        expected_type=TOKEN_TYPE_ACCESS,
+    )
+
+    user_id = access_payload["sub"]
+
+    # 2 Blacklist do access token
+    expires_at = jwt_handler.get_token_expiration(access_token)
+    ttl = int((expires_at - jwt_handler._now()).total_seconds())
 
     if ttl > 0:
         redis.setex(
-            name=f"blacklist:{token}",
+            name=f"blacklist:{access_token}",
             time=ttl,
             value="true",
         )
+
+    # 3 Decodifica refresh token
+    refresh_payload = jwt_handler.decode_token(
+        data.refresh_token,
+        expected_type=TOKEN_TYPE_REFRESH,
+    )
+
+    # 4 Garante que ambos pertencem ao mesmo usuário
+    if refresh_payload["sub"] != user_id:
+        raise UnauthorizedException("Refresh token não pertence ao usuário")
+
+    # 5 Revoga refresh token
+    redis.delete(f"refresh:{refresh_payload['jti']}")
 
     return
