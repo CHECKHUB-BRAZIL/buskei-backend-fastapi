@@ -5,7 +5,7 @@ from typing import Optional
 from app.modules.auth.domain.value_objects.email_vo import Email
 from app.modules.auth.domain.value_objects.name_vo import Name
 from app.modules.auth.domain.value_objects.password_vo import Password
-from app.shared.domain.value_objects.id_vo import UserId
+from app.shared.domain.value_objects.id_vo import Id
 
 
 @dataclass(frozen=True)
@@ -29,7 +29,7 @@ class UserEntity:
     - Usuário desativado não pode alterar dados sensíveis
     """
 
-    id: UserId
+    id: Id
     nome: Name
     email: Email
     password: Password

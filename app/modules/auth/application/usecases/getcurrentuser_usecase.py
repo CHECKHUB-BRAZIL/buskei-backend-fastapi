@@ -3,7 +3,7 @@ from app.modules.auth.domain.repositories.user_repository import UserRepository
 from app.modules.auth.application.dtos.currentuserresult_dto import (
     CurrentUserResultDTO
 )
-from app.shared.domain.value_objects.id_vo import UserId
+from app.shared.domain.value_objects.id_vo import Id
 
 
 class GetCurrentUserUseCase:
@@ -45,7 +45,7 @@ class GetCurrentUserUseCase:
 
         Fluxo:
         ------
-        1. Converte o ID primitivo em UserId (Value Object)
+        1. Converte o ID primitivo em Id (Value Object)
         2. Busca o usuário no repositório
         3. Valida a existência do usuário
         4. Retorna os dados através de um DTO de saída
@@ -58,11 +58,11 @@ class GetCurrentUserUseCase:
 
         Raises:
             UserNotFoundException: Se o usuário não existir
-            ValueError: Se o UserId for inválido
+            ValueError: Se o Id for inválido
         """
 
         # 1. Converte para Value Object
-        user_id_vo = UserId(user_id)
+        user_id_vo = Id(user_id)
 
         # 2. Busca no repositório
         user = await self._user_repository.get_by_id(user_id_vo)

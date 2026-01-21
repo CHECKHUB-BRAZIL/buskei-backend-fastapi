@@ -8,7 +8,7 @@ from app.modules.auth.domain.exceptions.auth_exceptions import (
     UserAlreadyExistsException,
 )
 from app.modules.auth.domain.value_objects.password_vo import Password
-from app.shared.domain.value_objects.id_vo import UserId
+from app.shared.domain.value_objects.id_vo import Id
 from app.modules.auth.infrastructure.security.password_hasher import PasswordHasher
 
 
@@ -66,7 +66,7 @@ class RegisterUseCase:
 
         # 4. Cria entidade de domínio
         user = UserEntity(
-            id=UserId.new(),
+            id=Id.new(),
             nome=input_dto.nome,
             email=input_dto.email,
             password=password,

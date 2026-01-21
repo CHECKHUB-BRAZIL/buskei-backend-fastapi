@@ -6,7 +6,7 @@ from app.modules.auth.domain.entities.user_entity import UserEntity
 from app.modules.auth.domain.read_models.user_credentials import UserCredentials
 from app.modules.auth.domain.repositories.user_repository import UserRepository
 from app.modules.auth.domain.value_objects.email_vo import Email
-from app.shared.domain.value_objects.id_vo import UserId
+from app.shared.domain.value_objects.id_vo import Id
 from app.modules.auth.infrastructure.models.user_model import UserModel
 
 
@@ -45,7 +45,7 @@ class UserRepositoryImpl(UserRepository):
         # Converte model para entidade
         return model.to_entity()
 
-    async def get_by_id(self, user_id: UserId) -> Optional[UserEntity]:
+    async def get_by_id(self, user_id: Id) -> Optional[UserEntity]:
         """
         Busca usuário por ID.
         
@@ -105,7 +105,7 @@ class UserRepositoryImpl(UserRepository):
             return None
 
         return UserCredentials(
-            user_id=UserId(row.id),
+            user_id=Id(row.id),
             password_hash=row.password,
             is_active=row.is_active,
         )
@@ -138,7 +138,7 @@ class UserRepositoryImpl(UserRepository):
         
         return user_model.to_entity()
     
-    async def delete(self, user_id: UserId) -> bool:
+    async def delete(self, user_id: Id) -> bool:
         """
         Remove usuário do banco.
         

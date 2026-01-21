@@ -3,7 +3,7 @@ from typing import Optional
 
 from app.modules.auth.domain.entities.user_entity import UserEntity
 from app.modules.auth.domain.read_models.user_credentials import UserCredentials
-from app.shared.domain.value_objects.id_vo import UserId
+from app.shared.domain.value_objects.id_vo import Id
 from app.modules.auth.domain.value_objects.email_vo import Email
 
 
@@ -21,7 +21,7 @@ class UserRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_by_id(self, user_id: UserId) -> Optional[UserEntity]:
+    async def get_by_id(self, user_id: Id) -> Optional[UserEntity]:
         """Busca usuário pelo ID."""
         raise NotImplementedError
 
@@ -41,7 +41,7 @@ class UserRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def delete(self, user_id: UserId) -> None:
+    async def delete(self, user_id: Id) -> None:
         """Remove usuário."""
         raise NotImplementedError
     
