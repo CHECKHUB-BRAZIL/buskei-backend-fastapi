@@ -1,8 +1,5 @@
-import uuid
-
 from sqlalchemy import Column, String, Boolean
 from sqlalchemy.orm import validates
-from sqlalchemy.dialects.postgresql import UUID
 
 from app.modules.auth.domain.entities.user_entity import UserEntity
 from app.modules.auth.domain.value_objects.email_vo import Email
