@@ -3,7 +3,7 @@ from datetime import datetime
 
 from app.modules.auth.domain.value_objects.email_vo import Email
 from app.modules.auth.domain.value_objects.name_vo import Name
-from app.modules.auth.domain.value_objects.user_id_vo import UserId
+from app.shared.domain.value_objects.id_vo import UserId
 
 @dataclass(frozen=True)
 class RegisterResultDTO:
