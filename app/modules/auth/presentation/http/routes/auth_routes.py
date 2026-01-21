@@ -80,7 +80,7 @@ async def login(
     access_token = jwt_handler.create_access_token(user_id)
     refresh_token = jwt_handler.create_refresh_token(user_id)
 
-    # 🔹 decodifica refresh para pegar o jti
+    # decodifica refresh para pegar o jti
     refresh_payload = jwt_handler.decode_token(
         refresh_token,
         expected_type=TOKEN_TYPE_REFRESH,
