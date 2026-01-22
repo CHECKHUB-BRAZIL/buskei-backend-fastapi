@@ -5,26 +5,18 @@ from app.core.config import settings
 from app.shared.infrastructure.database.session import init_db
 from app.shared.presentation.middlewares.auth_middleware import AuthMiddleware
 from app.infra.redis.dependencies import get_session_repository
+from app.modules.auth.presentation.http.routes.auth_routes import router as auth_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Iniciando aplicação...")
+
     init_db()
-
-    # Cria SessionRepository no startup
-    session_repo = get_session_repository()
-
-    # Registra middleware
-    app.add_middleware(
-        AuthMiddleware,
-        session_repository=session_repo,
-    )
+    app.state.session_repository = get_session_repository()
 
     print("Banco e Redis prontos")
-
     yield
-
     print("Encerrando aplicação...")
 
 
@@ -33,3 +25,9 @@ app = FastAPI(
     version=settings.VERSION,
     lifespan=lifespan,
 )
+
+# middleware
+app.add_middleware(AuthMiddleware)
+
+# REGISTRA AS ROTAS
+app.include_router(auth_router, prefix="/api/v1")
