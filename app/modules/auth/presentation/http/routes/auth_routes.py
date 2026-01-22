@@ -263,3 +263,41 @@ async def logout(
     redis.delete(f"refresh:{refresh_payload['jti']}")
 
     return
+
+
+@router.post(
+    "/logout-all",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(bearer_scheme)],
+)
+async def logout_all(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    jwt_handler: JWTHandler = Depends(get_jwt_handler),
+    redis: Redis = Depends(get_redis),
+):
+    access_token = credentials.credentials
+
+    payload = jwt_handler.decode_token(
+        access_token,
+        expected_type=TOKEN_TYPE_ACCESS,
+    )
+
+    user_id = payload["sub"]
+
+    # Busca todos os refresh tokens do usuário
+    session_key = f"user_sessions:{user_id}"
+    jtis = redis.smembers(session_key)
+
+    for jti in jtis:
+        redis.delete(f"refresh:{jti.decode()}")
+
+    redis.delete(session_key)
+
+    # blacklist do access token atual
+    expires_at = jwt_handler.get_token_expiration(access_token)
+    ttl = int((expires_at - jwt_handler._now()).total_seconds())
+
+    if ttl > 0:
+        redis.setex(f"blacklist:{access_token}", ttl, "true")
+
+    return
