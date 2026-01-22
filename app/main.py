@@ -4,7 +4,8 @@ from fastapi import FastAPI
 from app.core.config import settings
 from app.shared.infrastructure.database.session import init_db
 from app.shared.presentation.middlewares.auth_middleware import AuthMiddleware
-from app.infra.redis.dependencies import get_session_repository
+from app.infra.redis.redis_client import RedisClient
+from app.infra.redis.session_repository import RedisSessionRepository
 from app.modules.auth.presentation.http.routes.auth_routes import router as auth_router
 
 
@@ -13,7 +14,8 @@ async def lifespan(app: FastAPI):
     print("Iniciando aplicação...")
 
     init_db()
-    app.state.session_repository = get_session_repository()
+    redis = RedisClient.get_client()
+    app.state.session_repository = RedisSessionRepository(redis)
 
     print("Banco e Redis prontos")
     yield

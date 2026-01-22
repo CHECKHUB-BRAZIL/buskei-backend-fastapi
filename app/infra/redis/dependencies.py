@@ -9,7 +9,8 @@ from app.shared.domain.repositories.session_repository import SessionRepository
 def get_redis() -> Redis:
     return RedisClient.get_client()
 
-def get_session_repository(
+
+def get_session_repository_dep(
     redis: Redis = Depends(get_redis),
 ) -> SessionRepository:
     return RedisSessionRepository(redis)
