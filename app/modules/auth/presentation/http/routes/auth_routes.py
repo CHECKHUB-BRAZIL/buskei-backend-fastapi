@@ -1,4 +1,3 @@
-from datetime import datetime
 from fastapi import APIRouter, Depends, status, HTTPException
 from typing import Annotated
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -86,11 +85,17 @@ async def login(
         expected_type=TOKEN_TYPE_REFRESH,
     )
 
+    jti = refresh_payload["jti"]
+
+    # salva refresh
     redis.setex(
-        name=f"refresh:{refresh_payload['jti']}",
+        name=f"refresh:{jti}",
         time=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         value=user_id,
     )
+
+    # registra sessão do usuário
+    redis.sadd(f"user_sessions:{user_id}", refresh_payload["jti"])
 
     user_response = CurrentUserResponse(
         id=user_id,
@@ -127,7 +132,6 @@ async def register(
         )
 
         user = await register_uc.execute(input_dto)
-
         user_id = str(user.id.value)
 
         access_token = jwt_handler.create_access_token(user_id)
@@ -138,11 +142,17 @@ async def register(
             expected_type=TOKEN_TYPE_REFRESH,
         )
 
+        jti = refresh_payload["jti"]
+
+        # 1 salva refresh token
         redis.setex(
-            name=f"refresh:{refresh_payload['jti']}",
+            name=f"refresh:{jti}",
             time=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
             value=user_id,
         )
+
+        # 2 registra sessão
+        redis.sadd(f"user_sessions:{user_id}", jti)
 
         return RegisterResponse(
             user=CurrentUserResponse.from_domain(user),
@@ -157,6 +167,7 @@ async def register(
     except Exception:
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail="Erro interno")
+
 
 
 @router.get(
@@ -187,28 +198,33 @@ async def refresh_token(
 
     redis_key = f"refresh:{jti}"
 
-    # verifica se o refresh token ainda é válido
+    # 1. Verifica se refresh ainda é válido
     if not redis.exists(redis_key):
-        raise UnauthorizedException("Refresh token revogado")
+        raise UnauthorizedException("Refresh token revogado ou inválido")
 
-    # rotação: invalida o token antigo
+    # 2. Revoga refresh antigo
     redis.delete(redis_key)
+    redis.srem(f"user_sessions:{user_id}", jti)
 
-    # gera novos tokens
+    # 3. Gera novos tokens
     new_access_token = jwt_handler.create_access_token(user_id)
     new_refresh_token = jwt_handler.create_refresh_token(user_id)
 
-    # salva novo refresh no Redis
     new_payload = jwt_handler.decode_token(
         new_refresh_token,
         expected_type=TOKEN_TYPE_REFRESH,
     )
 
+    new_jti = new_payload["jti"]
+
+    # 4. Salva novo refresh
     redis.setex(
-        name=f"refresh:{new_payload['jti']}",
+        name=f"refresh:{new_jti}",
         time=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         value=user_id,
     )
+
+    redis.sadd(f"user_sessions:{user_id}", new_jti)
 
     return RefreshTokenResponse(
         access_token=new_access_token,
@@ -217,10 +233,10 @@ async def refresh_token(
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
+
 @router.post(
     "/logout",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(bearer_scheme)],
 )
 async def logout(
     data: LogoutRequest,
@@ -261,6 +277,7 @@ async def logout(
 
     # 5 Revoga refresh token
     redis.delete(f"refresh:{refresh_payload['jti']}")
+    redis.srem(f"user_sessions:{user_id}", refresh_payload["jti"])
 
     return
 
@@ -268,13 +285,13 @@ async def logout(
 @router.post(
     "/logout-all",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(bearer_scheme)],
 )
 async def logout_all(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     jwt_handler: JWTHandler = Depends(get_jwt_handler),
     redis: Redis = Depends(get_redis),
 ):
+    # Ainda implementar token_version no User e checar aqui para invalidar tokens antigos
     access_token = credentials.credentials
 
     payload = jwt_handler.decode_token(
@@ -285,13 +302,12 @@ async def logout_all(
     user_id = payload["sub"]
 
     # Busca todos os refresh tokens do usuário
-    session_key = f"user_sessions:{user_id}"
-    jtis = redis.smembers(session_key)
+    jtis = redis.smembers(f"user_sessions:{user_id}")
 
     for jti in jtis:
-        redis.delete(f"refresh:{jti.decode()}")
+        redis.delete(f"refresh:{jti}")
 
-    redis.delete(session_key)
+    redis.delete(f"user_sessions:{user_id}")
 
     # blacklist do access token atual
     expires_at = jwt_handler.get_token_expiration(access_token)
