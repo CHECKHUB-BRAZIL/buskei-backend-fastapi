@@ -1,3 +1,4 @@
+from uuid import uuid4
 from fastapi import APIRouter, Depends, status, HTTPException
 from typing import Annotated
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -6,7 +7,9 @@ import traceback
 from redis import Redis
 
 # ===== Presentation (HTTP Schemas) =====
+from app.modules.auth.domain.repositories.user_repository import UserRepository
 from app.modules.auth.presentation.http.schemas.current_user_response_schema import CurrentUserResponse
+from app.modules.auth.presentation.http.schemas.forgot_password_request import ForgotPasswordRequest
 from app.modules.auth.presentation.http.schemas.login_request import LoginRequest
 from app.modules.auth.presentation.http.schemas.login_response import LoginResponse
 from app.modules.auth.presentation.http.schemas.logout_request import LogoutRequest
@@ -38,9 +41,11 @@ from app.modules.auth.infrastructure.security.jwt_handler import JWTHandler
 # ===== Dependencies & Exceptions =====
 from app.modules.auth.presentation.http.dependencies.auth_deps import (
     CurrentUser,
+    get_current_user,
     get_jwt_handler,
     get_login_usecase,
     get_register_usecase,
+    get_user_repository,
 )
 
 from app.shared.presentation.exceptions.http_exceptions import (
@@ -317,3 +322,12 @@ async def logout_all(
         redis.setex(f"blacklist:{access_token}", ttl, "true")
 
     return
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    data: ForgotPasswordRequest,
+    forgot_password_uc: ForgotPasswordUseCase = Depends(get_forgot_password_usecase),
+):
+    await forgot_password_uc.execute(data.email)
+    return {"message": "Se o email existir, enviaremos instruções."}

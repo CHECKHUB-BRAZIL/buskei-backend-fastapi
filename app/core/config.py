@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     # ============================================================
     BCRYPT_ROUNDS: int = 12
 
+
+
+    PASSWORD_RESET_TOKEN_EXPIRE_SECONDS = 900  # 15 minutos
+    FRONTEND_URL = "https://seuapp.com"
+
     # ============================================================
     # Pydantic Settings Config (v2)
     # ============================================================

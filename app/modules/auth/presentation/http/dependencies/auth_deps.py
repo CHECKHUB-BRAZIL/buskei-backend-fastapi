@@ -3,6 +3,7 @@ from fastapi import Depends, Header, HTTPException, status
 from redis import Redis
 from sqlalchemy.orm import Session
 
+from app.modules.auth.application.usecases.forgot_password_usecase import ForgotPasswordUseCase
 from app.shared.infrastructure.database.session import get_db
 from app.modules.auth.domain.entities.user_entity import UserEntity
 from app.modules.auth.domain.repositories.user_repository import UserRepository
@@ -155,6 +156,15 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+
+def get_forgot_password_usecase(
+    user_repository: UserRepository = Depends(get_user_repository),
+    redis: Redis = Depends(get_redis),
+) -> ForgotPasswordUseCase:
+    return ForgotPasswordUseCase(
+        user_repository=user_repository,
+        redis=redis,
+    )
 
 
 # Type aliases para facilitar uso
