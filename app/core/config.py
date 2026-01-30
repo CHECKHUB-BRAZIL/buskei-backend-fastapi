@@ -46,8 +46,8 @@ class Settings(BaseSettings):
 
 
 
-    PASSWORD_RESET_TOKEN_EXPIRE_SECONDS = 900  # 15 minutos
-    FRONTEND_URL = "https://seuapp.com"
+    #PASSWORD_RESET_TOKEN_EXPIRE_SECONDS = 900  # 15 minutos
+    #FRONTEND_URL = "https://seuapp.com"
 
     # ============================================================
     # Pydantic Settings Config (v2)

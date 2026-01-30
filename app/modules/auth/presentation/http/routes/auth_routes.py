@@ -22,6 +22,7 @@ from app.modules.auth.presentation.http.schemas.register_response import Registe
 from app.modules.auth.application.usecases import (
     LoginUseCase,
     RegisterUseCase,
+    forgot_password_usecase,
 )
 from app.modules.auth.application.dtos import (
     LoginInputDTO,
@@ -323,11 +324,12 @@ async def logout_all(
 
     return
 
-
+"""
 @router.post("/forgot-password")
 async def forgot_password(
     data: ForgotPasswordRequest,
-    forgot_password_uc: ForgotPasswordUseCase = Depends(get_forgot_password_usecase),
+    forgot_password_uc: forgot_password_usecase.ForgotPasswordUseCase = Depends(forgot_password_usecase),
 ):
     await forgot_password_uc.execute(data.email)
     return {"message": "Se o email existir, enviaremos instruções."}
+"""

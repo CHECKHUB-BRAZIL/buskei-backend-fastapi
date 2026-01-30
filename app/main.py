@@ -28,6 +28,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# HEALTH CHECK (rota raiz)
+@app.get("/", tags=["health"])
+def health_check():
+    return {
+        "status": "healthy",
+        "service": "buskei-backend",
+    }
+
+
 # middleware
 app.add_middleware(AuthMiddleware)
 
