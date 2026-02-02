@@ -5,6 +5,10 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.modules.auth.domain.exceptions.auth_exceptions import AuthException
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 async def auth_exception_handler(request: Request, exc: AuthException):
     """Handler para exceções de autenticação."""
@@ -40,6 +44,7 @@ async def database_exception_handler(request: Request, exc: SQLAlchemyError):
 
 async def generic_exception_handler(request: Request, exc: Exception):
     """Handler genérico para exceções não tratadas."""
+    logger.exception("Erro inesperado")
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": "Erro interno do servidor"},

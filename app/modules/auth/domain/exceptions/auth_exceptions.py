@@ -115,3 +115,8 @@ class InvalidTokenException(AuthException):
     def __init__(self, message: str):
         self.message = message
         super().__init__(message)
+
+
+class InvalidPasswordException(AuthException):
+    def __init__(self):
+        super().__init__("Senha deve ter no mínimo 8 e no máximo 72 caracteres")

@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from app.modules.auth.domain.exceptions.auth_exceptions import InvalidPasswordException
+
 PASSWORD_MIN_LENGTH = 8
 PASSWORD_MAX_LENGTH = 72
 
@@ -22,14 +24,10 @@ class PlainPassword:
 
     def _validate(self) -> None:
         if len(self.value) < PASSWORD_MIN_LENGTH:
-            raise ValueError(
-                f"Senha deve ter no mínimo {PASSWORD_MIN_LENGTH} caracteres"
-            )
+            raise InvalidPasswordException()
 
         if len(self.value) > PASSWORD_MAX_LENGTH:
-            raise ValueError(
-                f"Senha deve ter no máximo {PASSWORD_MAX_LENGTH} caracteres"
-            )
+            raise InvalidPasswordException()
 
         if not any(c.isalpha() for c in self.value):
             raise ValueError("Senha deve conter pelo menos uma letra")
