@@ -11,7 +11,7 @@ from app.modules.auth.presentation.http.routes.auth_routes import router as auth
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.shared.presentation.exceptions.http_exceptions import (
+from app.shared.presentation.exceptions.exception_handlers import (
     auth_exception_handler,
     validation_exception_handler,
     database_exception_handler,
