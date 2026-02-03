@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from app.modules.auth.domain.value_objects.email_vo import Email
 from redis import Redis
 
 from app.modules.auth.domain.repositories.user_repository import UserRepository
@@ -15,9 +16,9 @@ class ForgotPasswordUseCase:
         self.user_repository = user_repository
         self.redis = redis
 
-    async def execute(self, input_dto):
+    async def execute(self, email: Email):
         # 1. Busca usuário
-        user = await self.user_repository.get_by_email(input_dto.email.value)
+        user = await self.user_repository.get_by_email(email.value)
 
         # 2. Segurança: não revela se existe ou não
         if not user:

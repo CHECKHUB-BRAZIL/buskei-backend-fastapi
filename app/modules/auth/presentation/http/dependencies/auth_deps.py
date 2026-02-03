@@ -166,6 +166,5 @@ def get_forgot_password_usecase(
         redis=redis,
     )
 
-
 # Type aliases para facilitar uso
 CurrentUser = Annotated[UserEntity, Depends(get_current_user)]

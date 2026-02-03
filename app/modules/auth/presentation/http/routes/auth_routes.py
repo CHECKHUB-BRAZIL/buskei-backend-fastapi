@@ -7,7 +7,6 @@ import traceback
 from redis import Redis
 
 # ===== Presentation (HTTP Schemas) =====
-from app.modules.auth.domain.repositories.user_repository import UserRepository
 from app.modules.auth.presentation.http.schemas.current_user_response_schema import CurrentUserResponse
 from app.modules.auth.presentation.http.schemas.forgot_password_request import ForgotPasswordRequest
 from app.modules.auth.presentation.http.schemas.login_request import LoginRequest
@@ -22,8 +21,12 @@ from app.modules.auth.presentation.http.schemas.register_response import Registe
 from app.modules.auth.application.usecases import (
     LoginUseCase,
     RegisterUseCase,
-    forgot_password_usecase,
 )
+
+from app.modules.auth.application.usecases.forgot_password_usecase import (
+    ForgotPasswordUseCase,
+)
+
 from app.modules.auth.application.dtos import (
     LoginInputDTO,
     RegisterInputDTO,
@@ -42,11 +45,10 @@ from app.modules.auth.infrastructure.security.jwt_handler import JWTHandler
 # ===== Dependencies & Exceptions =====
 from app.modules.auth.presentation.http.dependencies.auth_deps import (
     CurrentUser,
-    get_current_user,
+    get_forgot_password_usecase,
     get_jwt_handler,
     get_login_usecase,
     get_register_usecase,
-    get_user_repository,
 )
 
 from app.shared.presentation.exceptions.http_exceptions import (
@@ -324,12 +326,11 @@ async def logout_all(
 
     return
 
-"""
+
 @router.post("/forgot-password")
 async def forgot_password(
     data: ForgotPasswordRequest,
-    forgot_password_uc: forgot_password_usecase.ForgotPasswordUseCase = Depends(forgot_password_usecase),
+    forgot_password_uc: ForgotPasswordUseCase = Depends(get_forgot_password_usecase),
 ):
     await forgot_password_uc.execute(data.email)
     return {"message": "Se o email existir, enviaremos instruções."}
-"""
