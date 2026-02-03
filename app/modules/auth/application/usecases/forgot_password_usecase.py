@@ -16,9 +16,11 @@ class ForgotPasswordUseCase:
         self.user_repository = user_repository
         self.redis = redis
 
-    async def execute(self, email: Email):
+    async def execute(self, email: str):
+        email_vo = Email(email)
+
         # 1. Busca usuário
-        user = await self.user_repository.get_by_email(email.value)
+        user = await self.user_repository.get_by_email(email_vo)
 
         # 2. Segurança: não revela se existe ou não
         if not user:
