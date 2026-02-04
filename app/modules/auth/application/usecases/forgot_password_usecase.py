@@ -16,11 +16,9 @@ class ForgotPasswordUseCase:
         self.user_repository = user_repository
         self.redis = redis
 
-    async def execute(self, email: str):
-        email_vo = Email(email)
-
+    async def execute(self, email: Email):
         # 1. Busca usuário
-        user = await self.user_repository.get_by_email(email_vo)
+        user = await self.user_repository.get_by_email(email)
 
         # 2. Segurança: não revela se existe ou não
         if not user:
@@ -39,6 +37,9 @@ class ForgotPasswordUseCase:
         # 5. Enviar email (por enquanto stub)
         reset_link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
 
+        # STUB TEMPORÁRIO (email depois)
+        print(f"RESET LINK: {reset_link}")
+       
         # send_email(
         #     to=user.email.value,
         #     subject="Recuperação de senha",

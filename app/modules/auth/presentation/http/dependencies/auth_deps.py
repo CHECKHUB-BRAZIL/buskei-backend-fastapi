@@ -1,5 +1,6 @@
 from typing import Annotated
 from fastapi import Depends, Header, HTTPException, status
+from app.modules.auth.application.usecases.reset_password_usecase import ResetPasswordUseCase
 from redis import Redis
 from sqlalchemy.orm import Session
 
@@ -164,6 +165,17 @@ def get_forgot_password_usecase(
     return ForgotPasswordUseCase(
         user_repository=user_repository,
         redis=redis,
+    )
+
+def get_reset_password_usecase(
+    user_repository: UserRepository = Depends(get_user_repository),
+    redis: Redis = Depends(get_redis),
+    password_hasher: PasswordHasher = Depends(get_password_hasher),
+) -> ResetPasswordUseCase:
+    return ResetPasswordUseCase(
+        user_repository=user_repository,
+        redis=redis,
+        password_hasher=password_hasher,
     )
 
 # Type aliases para facilitar uso

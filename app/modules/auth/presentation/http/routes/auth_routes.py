@@ -4,6 +4,8 @@ from typing import Annotated
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import traceback
 
+from app.modules.auth.application.usecases.reset_password_usecase import ResetPasswordUseCase
+from app.modules.auth.presentation.http.schemas.reset_password_request import ResetPasswordRequest
 from redis import Redis
 
 # ===== Presentation (HTTP Schemas) =====
@@ -49,6 +51,7 @@ from app.modules.auth.presentation.http.dependencies.auth_deps import (
     get_jwt_handler,
     get_login_usecase,
     get_register_usecase,
+    get_reset_password_usecase,
 )
 
 from app.shared.presentation.exceptions.http_exceptions import (
@@ -332,5 +335,20 @@ async def forgot_password(
     data: ForgotPasswordRequest,
     forgot_password_uc: ForgotPasswordUseCase = Depends(get_forgot_password_usecase),
 ):
-    await forgot_password_uc.execute(data.email)
+    email = Email(data.email)
+    await forgot_password_uc.execute(email)
     return {"message": "Se o email existir, enviaremos instruções."}
+
+
+@router.post("/reset-password")
+async def reset_password(
+    data: ResetPasswordRequest,
+    reset_password_uc: ResetPasswordUseCase = Depends(get_reset_password_usecase),
+):
+    
+    plain_password = PlainPassword(data.new_password)
+    await reset_password_uc.execute(
+        token=data.token,
+        new_password=plain_password,
+    )
+    return {"message": "Senha alterada com sucesso"}

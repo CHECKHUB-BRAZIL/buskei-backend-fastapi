@@ -6,6 +6,7 @@ from app.modules.auth.domain.entities.user_entity import UserEntity
 from app.modules.auth.domain.read_models.user_credentials import UserCredentials
 from app.modules.auth.domain.repositories.user_repository import UserRepository
 from app.modules.auth.domain.value_objects.email_vo import Email
+from app.modules.auth.domain.value_objects.password_vo import Password
 from app.shared.domain.value_objects.id_vo import Id
 from app.modules.auth.infrastructure.models.user_model import UserModel
 
@@ -160,4 +161,13 @@ class UserRepositoryImpl(UserRepository):
         self._db.commit()
         
         return True
-    
+
+    async def update_password(self, user_id: Id, password: Password) -> None:
+        stmt = select(UserModel).where(UserModel.id == user_id.value)
+        user_model = self._db.execute(stmt).scalar_one_or_none()
+
+        if not user_model:
+            raise ValueError("Usuário não encontrado")
+
+        user_model.password = password.value
+        self._db.commit()

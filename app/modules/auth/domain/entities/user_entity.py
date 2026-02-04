@@ -83,6 +83,21 @@ class UserEntity:
             nome=new_name,
             updated_at=datetime.now(timezone.utc),
         )
+    
+    def change_password(self, new_password: Password) -> "UserEntity":
+        """
+        Altera a senha do usuário.
+
+        Regras de negócio:
+        - Usuário precisa estar ativo
+        - A senha já deve estar criptografada (Password VO)
+        """
+        self._ensure_active()
+
+        return self._copy(
+            password=new_password,
+            updated_at=datetime.now(timezone.utc),
+        )
 
     def can_login(self) -> bool:
         """

@@ -3,6 +3,7 @@ from typing import Optional
 
 from app.modules.auth.domain.entities.user_entity import UserEntity
 from app.modules.auth.domain.read_models.user_credentials import UserCredentials
+from app.modules.auth.domain.value_objects.password_vo import Password
 from app.shared.domain.value_objects.id_vo import Id
 from app.modules.auth.domain.value_objects.email_vo import Email
 
@@ -54,3 +55,8 @@ class UserRepository(ABC):
         Retorna apenas os dados necessários para autenticação.
         """
         raise NotImplementedError
+    
+    @abstractmethod
+    async def update_password(self, user_id: Id, password: Password) -> None:
+        """Atualiza somente a senha do usuário"""
+        pass
