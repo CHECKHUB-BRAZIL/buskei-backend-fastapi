@@ -1,6 +1,11 @@
 from typing import Annotated
 from fastapi import Depends, Header, HTTPException, status
+from app.modules.auth.application.services.google_token_verifier import GoogleTokenVerifier
+from app.modules.auth.application.services.jwt_service import JwtService
+from app.modules.auth.application.usecases.google_login_usecase import GoogleLoginUseCase
 from app.modules.auth.application.usecases.reset_password_usecase import ResetPasswordUseCase
+from app.modules.auth.infrastructure.repositories.google_token_verifier_impl import GoogleTokenVerifierImpl
+from app.modules.auth.infrastructure.repositories.jwt_service_impl import JwtServiceImpl
 from redis import Redis
 from sqlalchemy.orm import Session
 
@@ -157,6 +162,9 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+# Type aliases para facilitar uso
+CurrentUser = Annotated[UserEntity, Depends(get_current_user)]
+
 
 def get_forgot_password_usecase(
     user_repository: UserRepository = Depends(get_user_repository),
@@ -178,5 +186,21 @@ def get_reset_password_usecase(
         password_hasher=password_hasher,
     )
 
-# Type aliases para facilitar uso
-CurrentUser = Annotated[UserEntity, Depends(get_current_user)]
+def get_jwt_service(
+    jwt_handler: JWTHandler = Depends(get_jwt_handler),
+) -> JwtService:
+    return JwtServiceImpl(jwt_handler)
+
+def get_google_token_verifier() -> GoogleTokenVerifier:
+    return GoogleTokenVerifierImpl()
+
+def get_google_login_usecase(
+    user_repository: UserRepository = Depends(get_user_repository),
+    google_token_verifier: GoogleTokenVerifier = Depends(get_google_token_verifier),
+    jwt_service: JwtService = Depends(get_jwt_service),
+) -> GoogleLoginUseCase:
+    return GoogleLoginUseCase(
+        user_repository=user_repository,
+        google_token_verifier=google_token_verifier,
+        jwt_service=jwt_service,
+    )

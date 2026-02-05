@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     PASSWORD_RESET_TOKEN_EXPIRE_SECONDS: int = 900
     FRONTEND_URL: str = "https://seuapp.com"
 
+
+
+    GOOGLE_CLIENT_ID: str = "seu-client-id.apps.googleusercontent.com"
+
     # ============================================================
     # Pydantic Settings Config (v2)
     # ============================================================

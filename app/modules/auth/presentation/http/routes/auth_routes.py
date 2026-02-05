@@ -4,7 +4,9 @@ from typing import Annotated
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import traceback
 
+from app.modules.auth.application.usecases.google_login_usecase import GoogleLoginUseCase
 from app.modules.auth.application.usecases.reset_password_usecase import ResetPasswordUseCase
+from app.modules.auth.presentation.http.schemas.google_login_request import GoogleLoginRequest
 from app.modules.auth.presentation.http.schemas.reset_password_request import ResetPasswordRequest
 from redis import Redis
 
@@ -48,6 +50,7 @@ from app.modules.auth.infrastructure.security.jwt_handler import JWTHandler
 from app.modules.auth.presentation.http.dependencies.auth_deps import (
     CurrentUser,
     get_forgot_password_usecase,
+    get_google_login_usecase,
     get_jwt_handler,
     get_login_usecase,
     get_register_usecase,
@@ -352,3 +355,17 @@ async def reset_password(
         new_password=plain_password,
     )
     return {"message": "Senha alterada com sucesso"}
+
+@router.post(
+    "/google-login",
+    response_model=LoginResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def google_login(
+    body: GoogleLoginRequest,
+    usecase: GoogleLoginUseCase = Depends(get_google_login_usecase),
+):
+    """
+    Realiza login ou cadastro usando conta Google.
+    """
+    return await usecase.execute(body.id_token)
