@@ -20,6 +20,10 @@ class Password:
 
         if len(self.value) < 30:
             raise ValueError("Hash de senha inválido")
+    
+    @staticmethod
+    def from_hashed(hashed_password: str) -> "Password":
+        return Password(hashed_password)
 
     def __str__(self) -> str:
         return "******"

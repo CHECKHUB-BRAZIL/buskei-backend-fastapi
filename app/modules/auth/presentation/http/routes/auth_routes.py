@@ -1,4 +1,3 @@
-from uuid import uuid4
 from fastapi import APIRouter, Depends, status, HTTPException
 from typing import Annotated
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials

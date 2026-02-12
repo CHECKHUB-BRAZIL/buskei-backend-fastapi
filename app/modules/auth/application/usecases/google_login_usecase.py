@@ -36,10 +36,12 @@ class GoogleLoginUseCase:
 
         if not user:
             user = UserEntity(
-                id=Id.generate(),
+                id = Id.new(),
                 nome=name,
                 email=email,
-                password=Password.from_hashed("GOOGLE_AUTH"),
+                password=Password.from_hashed(
+                    "GOOGLE_EXTERNAL_AUTH_NO_PASSWORD_1234567890"
+                ),
                 is_active=True,
             )
 

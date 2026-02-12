@@ -16,8 +16,10 @@ class GoogleTokenVerifierImpl(GoogleTokenVerifier):
                 id_token.verify_oauth2_token,
                 token,
                 requests.Request(),
-                settings.GOOGLE_CLIENT_ID,
+                # deixa SEM client_id por enquanto
+                None,
             )
+
 
             if not id_info.get("email_verified"):
                 raise ValueError("Email do Google não verificado")
@@ -27,5 +29,6 @@ class GoogleTokenVerifierImpl(GoogleTokenVerifier):
 
             return email, name
 
-        except ValueError:
+        except Exception as e:
+            print("GOOGLE TOKEN ERROR:", e)
             raise ValueError("Token do Google inválido")
