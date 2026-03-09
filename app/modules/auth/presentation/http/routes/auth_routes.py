@@ -229,16 +229,31 @@ async def refresh_token(
     user_id = payload["sub"]
 
     redis_key = f"refresh:{jti}"
+    used_key = f"used_refresh:{jti}"
 
-    # 1. Verifica se refresh ainda é válido
+    # Verifica se refresh existe
     if not redis.exists(redis_key):
-        raise UnauthorizedException("Refresh token revogado ou inválido")
 
-    # 2. Revoga refresh antigo
-    redis.delete(redis_key)
-    redis.srem(f"user_sessions:{user_id}", jti)
+        # Reuse detection
+        if redis.exists(used_key):
 
-    # 3. Gera novos tokens
+            jtis = redis.smembers(f"user_sessions:{user_id}")
+
+            pipe = redis.pipeline()
+
+            for session_jti in jtis:
+                pipe.delete(f"refresh:{session_jti}")
+
+            pipe.delete(f"user_sessions:{user_id}")
+            pipe.execute()
+
+            raise UnauthorizedException(
+                "Refresh token reutilizado. Todas as sessões foram revogadas."
+            )
+
+        raise UnauthorizedException("Refresh token inválido ou expirado")
+
+    # Gera novos tokens
     new_access_token = jwt_handler.create_access_token(user_id)
     new_refresh_token = jwt_handler.create_refresh_token(user_id)
 
@@ -249,14 +264,22 @@ async def refresh_token(
 
     new_jti = new_payload["jti"]
 
-    # 4. Salva novo refresh
-    redis.setex(
-        name=f"refresh:{new_jti}",
-        time=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-        value=user_id,
-    )
+    ttl = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
 
-    redis.sadd(f"user_sessions:{user_id}", new_jti)
+    # Rotaciona refresh token
+    pipe = redis.pipeline()
+
+    pipe.delete(redis_key)
+    pipe.srem(f"user_sessions:{user_id}", jti)
+
+    # marca refresh antigo como usado
+    pipe.setex(used_key, ttl, 1)
+
+    # salva novo refresh
+    pipe.setex(f"refresh:{new_jti}", ttl, user_id)
+    pipe.sadd(f"user_sessions:{user_id}", new_jti)
+
+    pipe.execute()
 
     return RefreshTokenResponse(
         access_token=new_access_token,
