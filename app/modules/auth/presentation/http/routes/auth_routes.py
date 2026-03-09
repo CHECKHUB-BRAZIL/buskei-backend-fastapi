@@ -383,13 +383,26 @@ async def forgot_password(
 async def reset_password(
     data: ResetPasswordRequest,
     reset_password_uc: ResetPasswordUseCase = Depends(get_reset_password_usecase),
+    redis: Redis = Depends(get_redis),
 ):
-    
+
     plain_password = PlainPassword(data.new_password)
-    await reset_password_uc.execute(
+
+    user_id = await reset_password_uc.execute(
         token=data.token,
         new_password=plain_password,
     )
+
+    jtis = redis.smembers(f"user_sessions:{user_id}")
+
+    pipe = redis.pipeline()
+
+    for jti in jtis:
+        pipe.delete(f"refresh:{jti}")
+
+    pipe.delete(f"user_sessions:{user_id}")
+    pipe.execute()
+
     return {"message": "Senha alterada com sucesso"}
 
 @router.post(

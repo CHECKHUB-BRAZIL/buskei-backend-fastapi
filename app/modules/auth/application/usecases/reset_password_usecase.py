@@ -35,4 +35,7 @@ class ResetPasswordUseCase:
             user_id=Id(user_id),
             password=password,
         )
+
         self.redis.delete(redis_key)
+
+        return user_id
