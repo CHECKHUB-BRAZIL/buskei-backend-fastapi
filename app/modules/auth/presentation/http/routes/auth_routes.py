@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, Request, status, HTTPException
 from typing import Annotated
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import traceback
+from app.shared.security.rate_limiter import rate_limit
 
 from app.modules.auth.application.usecases.google_login_usecase import GoogleLoginUseCase
 from app.modules.auth.application.usecases.reset_password_usecase import ResetPasswordUseCase
@@ -75,11 +76,29 @@ bearer_scheme = HTTPBearer()
     response_model=LoginResponse,
 )
 async def login(
+    request: Request,
     credentials: LoginRequest,
     login_uc: Annotated[LoginUseCase, Depends(get_login_usecase)],
     jwt_handler: Annotated[JWTHandler, Depends(get_jwt_handler)],
     redis: Annotated[Redis, Depends(get_redis)],
 ):
+    ip = request.client.host
+    email = credentials.email.strip().lower()
+
+    rate_limit(
+        redis=redis,
+        key=f"login_attempt:{ip}",
+        limit=5,
+        window_seconds=60,
+    )
+
+    rate_limit(
+        redis=redis,
+        key=f"login_email:{email}",
+        limit=5,
+        window_seconds=60,
+    )
+
     input_dto = LoginInputDTO(
         email=Email(credentials.email),
         password=PlainPassword(credentials.senha),
@@ -334,9 +353,27 @@ async def logout_all(
 
 @router.post("/forgot-password")
 async def forgot_password(
+    request: Request,
     data: ForgotPasswordRequest,
     forgot_password_uc: ForgotPasswordUseCase = Depends(get_forgot_password_usecase),
+    redis: Redis = Depends(get_redis),
 ):
+    ip = request.client.host
+    email = data.email.strip().lower()
+
+    rate_limit(
+        redis,
+        key=f"forgot_password_ip:{ip}",
+        limit=5,
+        window_seconds=3600,
+    )
+
+    rate_limit(
+        redis,
+        key=f"forgot_password_email:{email}",
+        limit=3,
+        window_seconds=3600,
+    )
     email = Email(data.email)
     await forgot_password_uc.execute(email)
     return {"message": "Se o email existir, enviaremos instruções."}
