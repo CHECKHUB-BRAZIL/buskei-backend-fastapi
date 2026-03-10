@@ -402,17 +402,21 @@ async def reset_password(
     status_code=status.HTTP_200_OK,
 )
 async def google_login(
+    request: Request,
     body: GoogleLoginRequest,
-    usecase: GoogleLoginUseCase = Depends(get_google_login_usecase),
-    redis: Redis = Depends(get_redis), 
+    usecase: Annotated[GoogleLoginUseCase, Depends(get_google_login_usecase)],
+    redis: Annotated[Redis, Depends(get_redis)],
 ):
+    """
+    Realiza login ou cadastro usando conta Google.
+    """
+    ip = request.client.host
+
     rate_limit(
         redis,
         key=f"google_login_ip:{ip}",
         limit=10,
         window_seconds=60,
     )
-    """
-    Realiza login ou cadastro usando conta Google.
-    """
+
     return await usecase.execute(body.id_token)
