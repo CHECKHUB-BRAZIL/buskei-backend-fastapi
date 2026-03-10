@@ -1,9 +1,11 @@
 from typing import Annotated
 from fastapi import Depends, Header, HTTPException, status
+from app.infra.redis.session_repository import RedisSessionRepository
 from app.modules.auth.application.services.google_token_verifier import GoogleTokenVerifier
 from app.modules.auth.application.services.jwt_service import JwtService
 from app.modules.auth.application.usecases.google_login_usecase import GoogleLoginUseCase
 from app.modules.auth.application.usecases.reset_password_usecase import ResetPasswordUseCase
+from app.modules.auth.domain.repositories.session_repository import SessionRepository
 from app.modules.auth.infrastructure.repositories.google_token_verifier_impl import GoogleTokenVerifierImpl
 from app.modules.auth.infrastructure.repositories.jwt_service_impl import JwtServiceImpl
 from redis import Redis
@@ -204,3 +206,8 @@ def get_google_login_usecase(
         google_token_verifier=google_token_verifier,
         jwt_service=jwt_service,
     )
+
+def get_session_repository(
+    redis: Redis = Depends(get_redis),
+) -> SessionRepository:
+    return RedisSessionRepository(redis)

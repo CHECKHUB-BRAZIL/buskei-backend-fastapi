@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Request, status, HTTPException
 from typing import Annotated
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import traceback
+from app.modules.auth.domain.repositories.session_repository import SessionRepository
 from app.shared.security.rate_limiter import rate_limit
 
 from app.modules.auth.application.usecases.google_login_usecase import GoogleLoginUseCase
@@ -55,6 +56,7 @@ from app.modules.auth.presentation.http.dependencies.auth_deps import (
     get_login_usecase,
     get_register_usecase,
     get_reset_password_usecase,
+    get_session_repository,
 )
 
 from app.shared.presentation.exceptions.http_exceptions import (
@@ -80,7 +82,8 @@ async def login(
     credentials: LoginRequest,
     login_uc: Annotated[LoginUseCase, Depends(get_login_usecase)],
     jwt_handler: Annotated[JWTHandler, Depends(get_jwt_handler)],
-    redis: Annotated[Redis, Depends(get_redis)],
+    session_repo: SessionRepository = Depends(get_session_repository),
+    redis: Redis = Depends(get_redis), 
 ):
     ip = request.client.host
     email = credentials.email.strip().lower()
@@ -111,7 +114,6 @@ async def login(
     access_token = jwt_handler.create_access_token(user_id)
     refresh_token = jwt_handler.create_refresh_token(user_id)
 
-    # decodifica refresh para pegar o jti
     refresh_payload = jwt_handler.decode_token(
         refresh_token,
         expected_type=TOKEN_TYPE_REFRESH,
@@ -119,15 +121,15 @@ async def login(
 
     jti = refresh_payload["jti"]
 
-    # salva refresh
-    redis.setex(
-        name=f"refresh:{jti}",
-        time=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-        value=user_id,
-    )
+    # TTL do refresh
+    ttl_seconds = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
 
-    # registra sessão do usuário
-    redis.sadd(f"user_sessions:{user_id}", refresh_payload["jti"])
+    # usa repository (correto)
+    session_repo.store_refresh_token(
+        jti=jti,
+        user_id=user_id,
+        ttl_seconds=ttl_seconds,
+    )
 
     user_response = CurrentUserResponse(
         id=user_id,
@@ -145,6 +147,7 @@ async def login(
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
+
 @router.post(
     "/register",
     response_model=RegisterResponse,
@@ -154,7 +157,7 @@ async def register(
     data: RegisterRequest,
     register_uc: Annotated[RegisterUseCase, Depends(get_register_usecase)],
     jwt_handler: Annotated[JWTHandler, Depends(get_jwt_handler)],
-    redis: Annotated[Redis, Depends(get_redis)],
+    session_repo: Annotated[SessionRepository, Depends(get_session_repository)],
 ):
     try:
         input_dto = RegisterInputDTO(
@@ -176,15 +179,14 @@ async def register(
 
         jti = refresh_payload["jti"]
 
-        # 1 salva refresh token
-        redis.setex(
-            name=f"refresh:{jti}",
-            time=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-            value=user_id,
-        )
+        ttl_seconds = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
 
-        # 2 registra sessão
-        redis.sadd(f"user_sessions:{user_id}", jti)
+        # usa repository (arquitetura correta)
+        session_repo.store_refresh_token(
+            jti=jti,
+            user_id=user_id,
+            ttl_seconds=ttl_seconds,
+        )
 
         return RegisterResponse(
             user=CurrentUserResponse.from_domain(user),
@@ -201,7 +203,6 @@ async def register(
         raise HTTPException(status_code=500, detail="Erro interno")
 
 
-
 @router.get(
     "/me",
     response_model=CurrentUserResponse,
@@ -210,7 +211,6 @@ async def register(
 async def get_me(current_user: CurrentUser):
     return CurrentUserResponse.from_domain(current_user)
 
-
 @router.post(
     "/refresh",
     response_model=RefreshTokenResponse,
@@ -218,7 +218,7 @@ async def get_me(current_user: CurrentUser):
 async def refresh_token(
     data: RefreshTokenRequest,
     jwt_handler: Annotated[JWTHandler, Depends(get_jwt_handler)],
-    redis: Annotated[Redis, Depends(get_redis)],
+    session_repo: Annotated[SessionRepository, Depends(get_session_repository)],
 ):
     payload = jwt_handler.decode_token(
         data.refresh_token,
@@ -228,24 +228,15 @@ async def refresh_token(
     jti = payload["jti"]
     user_id = payload["sub"]
 
-    redis_key = f"refresh:{jti}"
-    used_key = f"used_refresh:{jti}"
+    ttl = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
 
-    # Verifica se refresh existe
-    if not redis.exists(redis_key):
+    # verifica se refresh existe
+    if not session_repo.is_refresh_token_valid(jti):
 
-        # Reuse detection
-        if redis.exists(used_key):
+        # reuse detection
+        if session_repo.is_refresh_token_used(jti):
 
-            jtis = redis.smembers(f"user_sessions:{user_id}")
-
-            pipe = redis.pipeline()
-
-            for session_jti in jtis:
-                pipe.delete(f"refresh:{session_jti}")
-
-            pipe.delete(f"user_sessions:{user_id}")
-            pipe.execute()
+            session_repo.revoke_all_sessions(user_id)
 
             raise UnauthorizedException(
                 "Refresh token reutilizado. Todas as sessões foram revogadas."
@@ -253,7 +244,7 @@ async def refresh_token(
 
         raise UnauthorizedException("Refresh token inválido ou expirado")
 
-    # Gera novos tokens
+    # gera novos tokens
     new_access_token = jwt_handler.create_access_token(user_id)
     new_refresh_token = jwt_handler.create_refresh_token(user_id)
 
@@ -264,22 +255,14 @@ async def refresh_token(
 
     new_jti = new_payload["jti"]
 
-    ttl = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+    # revoke refresh antigo
+    session_repo.revoke_refresh_token(jti, user_id)
 
-    # Rotaciona refresh token
-    pipe = redis.pipeline()
-
-    pipe.delete(redis_key)
-    pipe.srem(f"user_sessions:{user_id}", jti)
-
-    # marca refresh antigo como usado
-    pipe.setex(used_key, ttl, 1)
+    # marca como usado
+    session_repo.mark_refresh_token_used(jti, ttl)
 
     # salva novo refresh
-    pipe.setex(f"refresh:{new_jti}", ttl, user_id)
-    pipe.sadd(f"user_sessions:{user_id}", new_jti)
-
-    pipe.execute()
+    session_repo.store_refresh_token(new_jti, user_id, ttl)
 
     return RefreshTokenResponse(
         access_token=new_access_token,
@@ -287,7 +270,6 @@ async def refresh_token(
         token_type="Bearer",
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
-
 
 @router.post(
     "/logout",
@@ -297,7 +279,7 @@ async def logout(
     data: LogoutRequest,
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     jwt_handler: JWTHandler = Depends(get_jwt_handler),
-    redis: Redis = Depends(get_redis),
+    session_repo: SessionRepository = Depends(get_session_repository),
 ):
     access_token = credentials.credentials
 
@@ -311,14 +293,11 @@ async def logout(
 
     # 2 Blacklist do access token
     expires_at = jwt_handler.get_token_expiration(access_token)
-    ttl = int((expires_at - jwt_handler._now()).total_seconds())
 
-    if ttl > 0:
-        redis.setex(
-            name=f"blacklist:{access_token}",
-            time=ttl,
-            value="true",
-        )
+    session_repo.blacklist_access_token(
+        token=access_token,
+        expires_at=expires_at,
+    )
 
     # 3 Decodifica refresh token
     refresh_payload = jwt_handler.decode_token(
@@ -331,12 +310,10 @@ async def logout(
         raise UnauthorizedException("Refresh token não pertence ao usuário")
 
     # 5 Revoga refresh token
-    redis.delete(f"refresh:{refresh_payload['jti']}")
-    redis.srem(f"user_sessions:{user_id}", refresh_payload["jti"])
-
-    return
-
-
+    session_repo.revoke_refresh_token(
+        jti=refresh_payload["jti"],
+        user_id=user_id,
+    )
 @router.post(
     "/logout-all",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -344,9 +321,8 @@ async def logout(
 async def logout_all(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     jwt_handler: JWTHandler = Depends(get_jwt_handler),
-    redis: Redis = Depends(get_redis),
+    session_repo: SessionRepository = Depends(get_session_repository),
 ):
-    # Ainda implementar token_version no User e checar aqui para invalidar tokens antigos
     access_token = credentials.credentials
 
     payload = jwt_handler.decode_token(
@@ -356,20 +332,16 @@ async def logout_all(
 
     user_id = payload["sub"]
 
-    # Busca todos os refresh tokens do usuário
-    jtis = redis.smembers(f"user_sessions:{user_id}")
-
-    for jti in jtis:
-        redis.delete(f"refresh:{jti}")
-
-    redis.delete(f"user_sessions:{user_id}")
+    # revoga todas as sessões do usuário
+    session_repo.revoke_all_sessions(user_id)
 
     # blacklist do access token atual
     expires_at = jwt_handler.get_token_expiration(access_token)
-    ttl = int((expires_at - jwt_handler._now()).total_seconds())
 
-    if ttl > 0:
-        redis.setex(f"blacklist:{access_token}", ttl, "true")
+    session_repo.blacklist_access_token(
+        token=access_token,
+        expires_at=expires_at,
+    )
 
     return
 
@@ -378,11 +350,11 @@ async def logout_all(
 async def forgot_password(
     request: Request,
     data: ForgotPasswordRequest,
-    forgot_password_uc: ForgotPasswordUseCase = Depends(get_forgot_password_usecase),
-    redis: Redis = Depends(get_redis),
+    forgot_password_uc: Annotated[ForgotPasswordUseCase, Depends(get_forgot_password_usecase)],
+    redis: Annotated[Redis, Depends(get_redis)],
 ):
     ip = request.client.host
-    email = data.email.strip().lower()
+    email_str = data.email.strip().lower()
 
     rate_limit(
         redis,
@@ -393,20 +365,22 @@ async def forgot_password(
 
     rate_limit(
         redis,
-        key=f"forgot_password_email:{email}",
+        key=f"forgot_password_email:{email_str}",
         limit=3,
         window_seconds=3600,
     )
-    email = Email(data.email)
-    await forgot_password_uc.execute(email)
-    return {"message": "Se o email existir, enviaremos instruções."}
 
+    email = Email(email_str)
+
+    await forgot_password_uc.execute(email)
+
+    return {"message": "Se o email existir, enviaremos instruções."}
 
 @router.post("/reset-password")
 async def reset_password(
     data: ResetPasswordRequest,
-    reset_password_uc: ResetPasswordUseCase = Depends(get_reset_password_usecase),
-    redis: Redis = Depends(get_redis),
+    reset_password_uc: Annotated[ResetPasswordUseCase, Depends(get_reset_password_usecase)],
+    session_repo: Annotated[SessionRepository, Depends(get_session_repository)],
 ):
 
     plain_password = PlainPassword(data.new_password)
@@ -416,17 +390,11 @@ async def reset_password(
         new_password=plain_password,
     )
 
-    jtis = redis.smembers(f"user_sessions:{user_id}")
-
-    pipe = redis.pipeline()
-
-    for jti in jtis:
-        pipe.delete(f"refresh:{jti}")
-
-    pipe.delete(f"user_sessions:{user_id}")
-    pipe.execute()
+    # revoga todas as sessões do usuário
+    session_repo.revoke_all_sessions(user_id)
 
     return {"message": "Senha alterada com sucesso"}
+
 
 @router.post(
     "/google-login",
@@ -436,7 +404,14 @@ async def reset_password(
 async def google_login(
     body: GoogleLoginRequest,
     usecase: GoogleLoginUseCase = Depends(get_google_login_usecase),
+    redis: Redis = Depends(get_redis), 
 ):
+    rate_limit(
+        redis,
+        key=f"google_login_ip:{ip}",
+        limit=10,
+        window_seconds=60,
+    )
     """
     Realiza login ou cadastro usando conta Google.
     """
