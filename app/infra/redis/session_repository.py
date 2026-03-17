@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from redis import Redis
 
-from app.shared.domain.repositories.session_repository import SessionRepository
+from app.modules.auth.domain.repositories.session_repository import SessionRepository
 
 
 class RedisSessionRepository(SessionRepository):
