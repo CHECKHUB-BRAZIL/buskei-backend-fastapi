@@ -30,7 +30,7 @@ class AnalyzeLinkUseCase:
     def __init__(self, repository: LinkAnalysisRepository) -> None:
         self._repository = repository
 
-    async def execute(self, input_dto: AnalyzeLinkInputDTO) -> AnalyzeLinkOutputDTO:
+    def execute(self, input_dto: AnalyzeLinkInputDTO) -> AnalyzeLinkOutputDTO:
         raw_url = input_dto.url.strip()
 
         # --- Guarda de domínio: tamanho máximo ---
@@ -52,7 +52,7 @@ class AnalyzeLinkUseCase:
         analysis: LinkAnalysisEntity = LinkAnalysisEntity.analyze(url)
 
         # --- Persistência ---
-        await self._repository.save(analysis)
+        self._repository.save(analysis)
 
         return AnalyzeLinkOutputDTO(
             url=str(analysis.url),

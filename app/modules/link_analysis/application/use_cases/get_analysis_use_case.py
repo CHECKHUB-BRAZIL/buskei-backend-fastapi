@@ -26,13 +26,13 @@ class GetAnalysisUseCase:
     def __init__(self, repository: LinkAnalysisRepository) -> None:
         self._repository = repository
 
-    async def execute(self, input_dto: GetAnalysisInputDTO) -> GetAnalysisOutputDTO:
+    def execute(self, input_dto: GetAnalysisInputDTO) -> GetAnalysisOutputDTO:
         try:
             url = URL(value=input_dto.url)
         except ValueError:
             raise InvalidURLError(input_dto.url)
 
-        analysis = await self._repository.find_by_url(url)
+        analysis = self._repository.find_by_url(url)
 
         if analysis is None:
             raise AnalysisNotFoundError(input_dto.url)

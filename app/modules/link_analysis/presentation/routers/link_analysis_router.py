@@ -1,13 +1,31 @@
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
+
+from app.shared.infrastructure.database.session import get_db
+
+from app.modules.link_analysis.infrastructure.repositories.link_analysis_repository_impl import (
+    SQLAlchemyLinkAnalysisRepository,
+)
+
+from app.modules.link_analysis.application.use_cases.analyze_link_use_case import (
+    AnalyzeLinkUseCase,
+)
+from app.modules.link_analysis.application.use_cases.list_analyses_use_case import (
+    ListAnalysesUseCase,
+)
+from app.modules.link_analysis.application.use_cases.get_analysis_use_case import (
+    GetAnalysisUseCase,
+)
+from app.modules.link_analysis.application.use_cases.delete_analysis_use_case import (
+    DeleteAnalysisUseCase,
+)
 
 from app.modules.link_analysis.application.dtos.link_analysis_dto import (
     AnalyzeLinkInputDTO,
     DeleteAnalysisInputDTO,
     GetAnalysisInputDTO,
 )
-from app.modules.link_analysis.infrastructure.container import LinkAnalysisContainer
-from app.modules.link_analysis.infrastructure.database.session import get_session
+
 from app.modules.link_analysis.presentation.schemas.link_analysis_schema import (
     AnalysisListResponse,
     AnalysisResponse,
@@ -15,117 +33,56 @@ from app.modules.link_analysis.presentation.schemas.link_analysis_schema import 
     DeleteAnalysisResponse,
 )
 
-router = APIRouter(
-    prefix="/links",
-    tags=["Link Analysis"],
-)
+router = APIRouter(prefix="/links", tags=["Link Analysis"])
 
 
-def get_container(session: AsyncSession = Depends(get_session)) -> LinkAnalysisContainer:
-    return LinkAnalysisContainer(session)
+@router.post("/analyze", response_model=AnalysisResponse)
+def analyze_link(body: AnalyzeLinkRequest, db: Session = Depends(get_db)):
+    repo = SQLAlchemyLinkAnalysisRepository(db)
+    use_case = AnalyzeLinkUseCase(repo)
 
-
-# ---------------------------------------------------------------------------
-# POST /links/analyze
-# ---------------------------------------------------------------------------
-
-@router.post(
-    "/analyze",
-    response_model=AnalysisResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Analisar um link",
-    description=(
-        "Recebe uma URL, executa a analise de seguranca baseada nas regras de dominio "
-        "e persiste o resultado. Retorna o nivel de risco e os motivos identificados."
-    ),
-)
-async def analyze_link(
-    body: AnalyzeLinkRequest,
-    container: LinkAnalysisContainer = Depends(get_container),
-) -> AnalysisResponse:
-    output = await container.analyze_link().execute(
+    output = use_case.execute(
         AnalyzeLinkInputDTO(url=body.url)
     )
-    return AnalysisResponse(
-        url=output.url,
-        risk=output.risk,
-        reasons=output.reasons,
-        created_at=output.created_at,
+
+    return AnalysisResponse(**output.__dict__)
+
+
+@router.get("", response_model=AnalysisListResponse)
+def list_analyses(db: Session = Depends(get_db)):
+    repo = SQLAlchemyLinkAnalysisRepository(db)
+    use_case = ListAnalysesUseCase(repo)
+
+    outputs = use_case.execute()
+
+    return AnalysisListResponse(
+        total=len(outputs),
+        items=[AnalysisResponse(**o.__dict__) for o in outputs],
     )
 
 
-# ---------------------------------------------------------------------------
-# GET /links
-# ---------------------------------------------------------------------------
+@router.get("/analysis", response_model=AnalysisResponse)
+def get_analysis(url: str = Query(...), db: Session = Depends(get_db)):
+    repo = SQLAlchemyLinkAnalysisRepository(db)
+    use_case = GetAnalysisUseCase(repo)
 
-@router.get(
-    "",
-    response_model=AnalysisListResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Listar todas as analises",
-    description="Retorna todas as analises de links ja realizadas, ordenadas da mais recente.",
-)
-async def list_analyses(
-    container: LinkAnalysisContainer = Depends(get_container),
-) -> AnalysisListResponse:
-    outputs = await container.list_analyses().execute()
-    items = [
-        AnalysisResponse(
-            url=o.url,
-            risk=o.risk,
-            reasons=o.reasons,
-            created_at=o.created_at,
-        )
-        for o in outputs
-    ]
-    return AnalysisListResponse(total=len(items), items=items)
-
-
-# ---------------------------------------------------------------------------
-# GET /links/analysis
-# ---------------------------------------------------------------------------
-
-@router.get(
-    "/analysis",
-    response_model=AnalysisResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Buscar analise por URL",
-    description="Recupera a analise de seguranca previamente realizada para uma URL especifica.",
-)
-async def get_analysis(
-    url: str = Query(..., min_length=1, max_length=2083, description="URL a ser consultada."),
-    container: LinkAnalysisContainer = Depends(get_container),
-) -> AnalysisResponse:
-    output = await container.get_analysis().execute(
+    output = use_case.execute(
         GetAnalysisInputDTO(url=url)
     )
-    return AnalysisResponse(
-        url=output.url,
-        risk=output.risk,
-        reasons=output.reasons,
-        created_at=output.created_at,
-    )
+
+    return AnalysisResponse(**output.__dict__)
 
 
-# ---------------------------------------------------------------------------
-# DELETE /links/analysis
-# ---------------------------------------------------------------------------
+@router.delete("/analysis", response_model=DeleteAnalysisResponse)
+def delete_analysis(url: str = Query(...), db: Session = Depends(get_db)):
+    repo = SQLAlchemyLinkAnalysisRepository(db)
+    use_case = DeleteAnalysisUseCase(repo)
 
-@router.delete(
-    "/analysis",
-    response_model=DeleteAnalysisResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Remover analise por URL",
-    description="Remove permanentemente a analise associada a uma URL.",
-)
-async def delete_analysis(
-    url: str = Query(..., min_length=1, max_length=2083, description="URL a ser removida."),
-    container: LinkAnalysisContainer = Depends(get_container),
-) -> DeleteAnalysisResponse:
-    await container.delete_analysis().execute(
+    use_case.execute(
         DeleteAnalysisInputDTO(url=url)
     )
+
     return DeleteAnalysisResponse(
-        message="Analise removida com sucesso.",
+        message="Analysis removed successfully.",
         url=url,
     )

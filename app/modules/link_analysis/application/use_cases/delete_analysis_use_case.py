@@ -28,14 +28,14 @@ class DeleteAnalysisUseCase:
     def __init__(self, repository: LinkAnalysisRepository) -> None:
         self._repository = repository
 
-    async def execute(self, input_dto: DeleteAnalysisInputDTO) -> None:
+    def execute(self, input_dto: DeleteAnalysisInputDTO) -> None:
         try:
             url = URL(value=input_dto.url)
         except ValueError:
             raise InvalidURLError(input_dto.url)
 
-        exists = await self._repository.exists(url)
+        exists = self._repository.exists(url)
         if not exists:
             raise AnalysisNotFoundError(input_dto.url)
 
-        await self._repository.delete_by_url(url)
+        self._repository.delete_by_url(url)

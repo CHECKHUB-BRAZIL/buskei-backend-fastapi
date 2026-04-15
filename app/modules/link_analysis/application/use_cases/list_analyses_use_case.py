@@ -19,8 +19,8 @@ class ListAnalysesUseCase:
     def __init__(self, repository: LinkAnalysisRepository) -> None:
         self._repository = repository
 
-    async def execute(self) -> List[AnalyzeLinkOutputDTO]:
-        analyses = await self._repository.find_all()
+    def execute(self) -> List[AnalyzeLinkOutputDTO]:
+        analyses = self._repository.find_all()
 
         return [
             AnalyzeLinkOutputDTO(

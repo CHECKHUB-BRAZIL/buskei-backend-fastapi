@@ -19,7 +19,7 @@ class LinkAnalysisRepository(ABC):
     """
 
     @abstractmethod
-    async def save(self, analysis: LinkAnalysisEntity) -> None:
+    def save(self, analysis: LinkAnalysisEntity) -> None:
         """
         Persiste uma nova análise.
 
@@ -32,7 +32,7 @@ class LinkAnalysisRepository(ABC):
         """
 
     @abstractmethod
-    async def find_by_url(self, url: URL) -> Optional[LinkAnalysisEntity]:
+    def find_by_url(self, url: URL) -> Optional[LinkAnalysisEntity]:
         """
         Busca a análise mais recente associada a uma URL.
 
@@ -44,7 +44,7 @@ class LinkAnalysisRepository(ABC):
         """
 
     @abstractmethod
-    async def find_all(self) -> List[LinkAnalysisEntity]:
+    def find_all(self) -> List[LinkAnalysisEntity]:
         """
         Retorna todas as análises armazenadas.
 
@@ -53,7 +53,7 @@ class LinkAnalysisRepository(ABC):
         """
 
     @abstractmethod
-    async def delete_by_url(self, url: URL) -> None:
+    def delete_by_url(self, url: URL) -> None:
         """
         Remove a análise associada a uma URL.
 
@@ -65,7 +65,7 @@ class LinkAnalysisRepository(ABC):
         """
 
     @abstractmethod
-    async def exists(self, url: URL) -> bool:
+    def exists(self, url: URL) -> bool:
         """
         Verifica se já existe uma análise registrada para a URL.
 

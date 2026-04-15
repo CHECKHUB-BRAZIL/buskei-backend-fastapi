@@ -37,18 +37,18 @@ class SQLAlchemyLinkAnalysisRepository(LinkAnalysisRepository):
     # Implementações do contrato
     # ------------------------------------------------------------------
 
-    async def save(self, analysis: LinkAnalysisEntity) -> None:
-        already_exists = await self.exists(analysis.url)
+    def save(self, analysis: LinkAnalysisEntity) -> None:
+        already_exists = self.exists(analysis.url)
         if already_exists:
             raise DuplicateAnalysisError(str(analysis.url))
 
         model = LinkAnalysisMapper.to_model(analysis)
         self._session.add(model)
-        await self._session.flush()  # garante o INSERT sem fechar a transação
+        self._session.flush()  # garante o INSERT sem fechar a transação
 
-    async def find_by_url(self, url: URL) -> Optional[LinkAnalysisEntity]:
+    def find_by_url(self, url: URL) -> Optional[LinkAnalysisEntity]:
         stmt = select(LinkAnalysisModel).where(LinkAnalysisModel.url == str(url))
-        result = await self._session.execute(stmt)
+        result = self._session.execute(stmt)
         model = result.scalar_one_or_none()
 
         if model is None:
@@ -56,23 +56,23 @@ class SQLAlchemyLinkAnalysisRepository(LinkAnalysisRepository):
 
         return LinkAnalysisMapper.to_entity(model)
 
-    async def find_all(self) -> List[LinkAnalysisEntity]:
+    def find_all(self) -> List[LinkAnalysisEntity]:
         stmt = select(LinkAnalysisModel).order_by(LinkAnalysisModel.created_at.desc())
-        result = await self._session.execute(stmt)
+        result = self._session.execute(stmt)
         models = result.scalars().all()
 
         return [LinkAnalysisMapper.to_entity(model) for model in models]
 
-    async def delete_by_url(self, url: URL) -> None:
-        exists = await self.exists(url)
+    def delete_by_url(self, url: URL) -> None:
+        exists = self.exists(url)
         if not exists:
             raise AnalysisNotFoundError(str(url))
 
         stmt = delete(LinkAnalysisModel).where(LinkAnalysisModel.url == str(url))
-        await self._session.execute(stmt)
-        await self._session.flush()
+        self._session.execute(stmt)
+        self._session.flush()
 
-    async def exists(self, url: URL) -> bool:
+    def exists(self, url: URL) -> bool:
         stmt = select(LinkAnalysisModel.url).where(LinkAnalysisModel.url == str(url))
-        result = await self._session.execute(stmt)
+        result = self._session.execute(stmt)
         return result.scalar_one_or_none() is not None

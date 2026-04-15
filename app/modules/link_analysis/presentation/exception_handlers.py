@@ -30,7 +30,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     """
 
     @app.exception_handler(ValidationError)
-    async def validation_error_handler(request: Request, exc: ValidationError) -> JSONResponse:
+    def validation_error_handler(request: Request, exc: ValidationError) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
             content=ErrorResponse(
@@ -41,7 +41,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(NotFoundError)
-    async def not_found_error_handler(request: Request, exc: NotFoundError) -> JSONResponse:
+    def not_found_error_handler(request: Request, exc: NotFoundError) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
             content=ErrorResponse(
@@ -52,7 +52,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(ConflictError)
-    async def conflict_error_handler(request: Request, exc: ConflictError) -> JSONResponse:
+    def conflict_error_handler(request: Request, exc: ConflictError) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
             content=ErrorResponse(
@@ -63,7 +63,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(ApplicationError)
-    async def application_error_handler(request: Request, exc: ApplicationError) -> JSONResponse:
+    def application_error_handler(request: Request, exc: ApplicationError) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
             content=ErrorResponse(
@@ -74,7 +74,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(LinkAnalysisDomainError)
-    async def domain_error_handler(
+    def domain_error_handler(
         request: Request, exc: LinkAnalysisDomainError
     ) -> JSONResponse:
         # Dominio escapou sem ser mapeado — converte e responde
@@ -89,7 +89,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(Exception)
-    async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
         return JSONResponse(
             status_code=500,
             content=ErrorResponse(
