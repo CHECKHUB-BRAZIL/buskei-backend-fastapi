@@ -26,35 +26,11 @@ class LinkAnalysisEntity:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def analyze(url: URL) -> "LinkAnalysisEntity":
-        """
-        Executa a análise de segurança do link.
-
-        Regras:
-        - HTTP → risco alto
-        - Domínio inválido → risco alto
-        - Palavras suspeitas → risco médio
-        """
-
-        reasons: List[str] = []
-        risk = "safe"
-
-        # regra 1: HTTPS
-        if not url.is_https:
-            reasons.append("Não usa HTTPS")
-            risk = "high"
-
-        # regra 2: domínio inválido
-        if "." not in url.domain:
-            reasons.append("Domínio inválido")
-            risk = "high"
-
-        # regra 3: palavras suspeitas
-        if url.has_suspicious_words:
-            reasons.append("URL contém palavras suspeitas")
-            if risk != "high":
-                risk = "medium"
-
+    def create(
+        url: URL,
+        risk: str,
+        reasons: List[str],
+    ) -> "LinkAnalysisEntity":
         return LinkAnalysisEntity(
             url=url,
             risk=risk,
