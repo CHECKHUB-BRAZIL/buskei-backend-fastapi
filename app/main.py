@@ -7,6 +7,7 @@ from app.shared.presentation.middlewares.auth_middleware import AuthMiddleware
 from app.infra.redis.redis_client import RedisClient
 from app.infra.redis.session_repository import RedisSessionRepository
 from app.modules.auth.presentation.http.routes.auth_routes import router as auth_router
+from app.modules.link_analysis.presentation.routers.link_analysis_router import router as link_analysis_router
 
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
@@ -53,6 +54,7 @@ app.add_middleware(AuthMiddleware)
 
 # REGISTRA AS ROTAS
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(link_analysis_router, prefix="/api/v1")
 
 # domínio
 app.add_exception_handler(AuthException, auth_exception_handler)

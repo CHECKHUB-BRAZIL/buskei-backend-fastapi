@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
+from app.modules.link_analysis.application.dtos.link_analysis_dto import AnalyzeLinkInputDTO, GetAnalysisInputDTO
 from app.shared.infrastructure.database.session import get_db
 
 from app.modules.link_analysis.infrastructure.repositories.link_analysis_repository_impl import (
@@ -17,14 +18,10 @@ from app.modules.link_analysis.application.use_cases.get_analysis_use_case impor
     GetAnalysisUseCase,
 )
 from app.modules.link_analysis.application.use_cases.delete_analysis_use_case import (
+    DeleteAnalysisInputDTO,
     DeleteAnalysisUseCase,
 )
 
-from app.modules.link_analysis.application.dtos.link_analysis_dto import (
-    AnalyzeLinkInputDTO,
-    DeleteAnalysisInputDTO,
-    GetAnalysisInputDTO,
-)
 
 from app.modules.link_analysis.presentation.schemas.link_analysis_schema import (
     AnalysisListResponse,
