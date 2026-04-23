@@ -13,16 +13,6 @@ from app.modules.link_analysis.domain.value_objects.url_vo import URL
 
 
 class GetAnalysisUseCase:
-    """
-    Caso de uso: recuperar a análise mais recente de um link já analisado.
-
-    Fluxo:
-        1. Constrói o Value Object URL a partir da string recebida.
-        2. Consulta o repositório.
-        3. Levanta AnalysisNotFoundError se não houver resultado.
-        4. Retorna DTO de saída.
-    """
-
     def __init__(self, repository: LinkAnalysisRepository) -> None:
         self._repository = repository
 
@@ -32,7 +22,10 @@ class GetAnalysisUseCase:
         except ValueError:
             raise InvalidURLError(input_dto.url)
 
-        analysis = self._repository.find_by_url(url)
+        user_id = input_dto.user_id
+
+        # agora filtrado por usuário
+        analysis = self._repository.find_by_url(url, user_id=user_id)
 
         if analysis is None:
             raise AnalysisNotFoundError(input_dto.url)

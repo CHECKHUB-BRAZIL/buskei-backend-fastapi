@@ -1,26 +1,18 @@
 from typing import List
 
-from app.modules.link_analysis.application.dtos.link_analysis_dto import AnalyzeLinkOutputDTO
+from app.modules.link_analysis.application.dtos.link_analysis_dto import AnalyzeLinkOutputDTO, ListAnalysesInputDTO
 from app.modules.link_analysis.domain.repositories.link_analysis_repository import (
     LinkAnalysisRepository,
 )
 
-
 class ListAnalysesUseCase:
-    """
-    Caso de uso: listar todas as análises já realizadas.
-
-    Fluxo:
-        1. Busca todas as entidades no repositório.
-        2. Converte para DTOs de saída.
-        3. Retorna lista (pode ser vazia).
-    """
-
     def __init__(self, repository: LinkAnalysisRepository) -> None:
         self._repository = repository
 
-    def execute(self) -> List[AnalyzeLinkOutputDTO]:
-        analyses = self._repository.find_all()
+    def execute(self, input_dto: ListAnalysesInputDTO) -> List[AnalyzeLinkOutputDTO]:
+        user_id = input_dto.user_id
+
+        analyses = self._repository.find_all(user_id=user_id)
 
         return [
             AnalyzeLinkOutputDTO(

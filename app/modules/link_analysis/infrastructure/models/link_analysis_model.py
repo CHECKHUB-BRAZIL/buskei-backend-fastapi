@@ -19,6 +19,8 @@ class LinkAnalysisModel(Base):
     __tablename__ = "link_analyses"
 
     url = Column(String(2083), primary_key=True, nullable=False, index=True)
+    user_id = Column(String(36), primary_key=True, nullable=False, index=True)
+
     risk = Column(String(10), nullable=False)
     reasons = Column(ARRAY(Text), nullable=False, default=list)
     created_at = Column(

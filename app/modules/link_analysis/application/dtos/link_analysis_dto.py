@@ -10,6 +10,7 @@ class AnalyzeLinkInputDTO:
     Recebido diretamente da camada de apresentação (controller/endpoint).
     """
     url: str  # string bruta — o caso de uso valida e converte para URL VO
+    user_id: str 
 
 
 @dataclass(frozen=True)
@@ -22,6 +23,7 @@ class AnalyzeLinkOutputDTO:
     risk: str                  # "safe" | "medium" | "high"
     reasons: List[str]
     created_at: datetime
+    user_id: str 
 
 
 @dataclass(frozen=True)
@@ -30,6 +32,13 @@ class GetAnalysisInputDTO:
     Dados de entrada para buscar uma análise já existente por URL.
     """
     url: str
+    user_id: str 
+
+
+@dataclass(frozen=True)
+class DeleteAnalysisInputDTO:
+    url: str
+    user_id: str
 
 
 @dataclass(frozen=True)
@@ -43,3 +52,9 @@ class GetAnalysisOutputDTO:
     risk: str
     reasons: List[str]
     created_at: datetime
+    user_id: str 
+
+
+@dataclass(frozen=True)
+class ListAnalysesInputDTO:
+    user_id: str

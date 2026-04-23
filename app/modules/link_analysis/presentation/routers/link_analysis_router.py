@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
-from app.modules.link_analysis.application.dtos.link_analysis_dto import AnalyzeLinkInputDTO, GetAnalysisInputDTO
+from app.modules.auth.presentation.http.dependencies.auth_deps import get_current_user
+from app.modules.link_analysis.application.dtos.link_analysis_dto import AnalyzeLinkInputDTO, GetAnalysisInputDTO, ListAnalysesInputDTO
 from app.shared.infrastructure.database.session import get_db
 
 from app.modules.link_analysis.infrastructure.repositories.link_analysis_repository_impl import (
@@ -34,23 +35,35 @@ router = APIRouter(prefix="/links", tags=["Link Analysis"])
 
 
 @router.post("/analyze", response_model=AnalysisResponse)
-def analyze_link(body: AnalyzeLinkRequest, db: Session = Depends(get_db)):
+def analyze_link(
+    body: AnalyzeLinkRequest,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user),
+):
     repo = SQLAlchemyLinkAnalysisRepository(db)
     use_case = AnalyzeLinkUseCase(repo)
 
     output = use_case.execute(
-        AnalyzeLinkInputDTO(url=body.url)
+        AnalyzeLinkInputDTO(
+            url=body.url,
+            user_id=user_id,
+        )
     )
 
     return AnalysisResponse(**output.__dict__)
 
 
 @router.get("", response_model=AnalysisListResponse)
-def list_analyses(db: Session = Depends(get_db)):
+def list_analyses(
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user),
+):
     repo = SQLAlchemyLinkAnalysisRepository(db)
     use_case = ListAnalysesUseCase(repo)
 
-    outputs = use_case.execute()
+    outputs = use_case.execute(
+        ListAnalysesInputDTO(user_id=user_id)
+    )
 
     return AnalysisListResponse(
         total=len(outputs),
@@ -59,24 +72,38 @@ def list_analyses(db: Session = Depends(get_db)):
 
 
 @router.get("/analysis", response_model=AnalysisResponse)
-def get_analysis(url: str = Query(...), db: Session = Depends(get_db)):
+def get_analysis(
+    url: str = Query(...),
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user),
+):
     repo = SQLAlchemyLinkAnalysisRepository(db)
     use_case = GetAnalysisUseCase(repo)
 
     output = use_case.execute(
-        GetAnalysisInputDTO(url=url)
+        GetAnalysisInputDTO(
+            url=url,
+            user_id=user_id,
+        )
     )
 
     return AnalysisResponse(**output.__dict__)
 
 
 @router.delete("/analysis", response_model=DeleteAnalysisResponse)
-def delete_analysis(url: str = Query(...), db: Session = Depends(get_db)):
+def delete_analysis(
+    url: str = Query(...),
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user),
+):
     repo = SQLAlchemyLinkAnalysisRepository(db)
     use_case = DeleteAnalysisUseCase(repo)
 
     use_case.execute(
-        DeleteAnalysisInputDTO(url=url)
+        DeleteAnalysisInputDTO(
+            url=url,
+            user_id=user_id,
+        )
     )
 
     return DeleteAnalysisResponse(

@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.modules.link_analysis.domain.entities.link_entity import LinkAnalysisEntity
 from app.modules.link_analysis.domain.exceptions.exceptions import (
@@ -30,24 +30,31 @@ class SQLAlchemyLinkAnalysisRepository(LinkAnalysisRepository):
     - Levantar exceções de domínio (nunca exceções de infra para cima).
     """
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self._session = session
 
     # ------------------------------------------------------------------
     # Implementações do contrato
     # ------------------------------------------------------------------
 
-    def save(self, analysis: LinkAnalysisEntity) -> None:
-        already_exists = self.exists(analysis.url)
+    def save(self, analysis: LinkAnalysisEntity, user_id: str) -> None:
+        already_exists = self.exists(analysis.url, user_id)
+
         if already_exists:
             raise DuplicateAnalysisError(str(analysis.url))
 
-        model = LinkAnalysisMapper.to_model(analysis)
-        self._session.add(model)
-        self._session.flush()  # garante o INSERT sem fechar a transação
+        model = LinkAnalysisMapper.to_model(analysis, user_id)
 
-    def find_by_url(self, url: URL) -> Optional[LinkAnalysisEntity]:
-        stmt = select(LinkAnalysisModel).where(LinkAnalysisModel.url == str(url))
+        self._session.add(model)
+        self._session.flush()
+
+
+    def find_by_url(self, url: URL, user_id: str) -> Optional[LinkAnalysisEntity]:
+        stmt = select(LinkAnalysisModel).where(
+            LinkAnalysisModel.url == str(url),
+            LinkAnalysisModel.user_id == user_id,
+        )
+
         result = self._session.execute(stmt)
         model = result.scalar_one_or_none()
 
@@ -56,23 +63,38 @@ class SQLAlchemyLinkAnalysisRepository(LinkAnalysisRepository):
 
         return LinkAnalysisMapper.to_entity(model)
 
-    def find_all(self) -> List[LinkAnalysisEntity]:
-        stmt = select(LinkAnalysisModel).order_by(LinkAnalysisModel.created_at.desc())
+
+    def find_all(self, user_id: str) -> List[LinkAnalysisEntity]:
+        stmt = (
+            select(LinkAnalysisModel)
+            .where(LinkAnalysisModel.user_id == user_id)
+            .order_by(LinkAnalysisModel.created_at.desc())
+        )
+
         result = self._session.execute(stmt)
         models = result.scalars().all()
 
         return [LinkAnalysisMapper.to_entity(model) for model in models]
 
-    def delete_by_url(self, url: URL) -> None:
-        exists = self.exists(url)
-        if not exists:
+
+    def delete_by_url(self, url: URL, user_id: str) -> None:
+        if not self.exists(url, user_id):
             raise AnalysisNotFoundError(str(url))
 
-        stmt = delete(LinkAnalysisModel).where(LinkAnalysisModel.url == str(url))
+        stmt = delete(LinkAnalysisModel).where(
+            LinkAnalysisModel.url == str(url),
+            LinkAnalysisModel.user_id == user_id,
+        )
+
         self._session.execute(stmt)
         self._session.flush()
 
-    def exists(self, url: URL) -> bool:
-        stmt = select(LinkAnalysisModel.url).where(LinkAnalysisModel.url == str(url))
+
+    def exists(self, url: URL, user_id: str) -> bool:
+        stmt = select(LinkAnalysisModel.url).where(
+            LinkAnalysisModel.url == str(url),
+            LinkAnalysisModel.user_id == user_id,
+        )
+
         result = self._session.execute(stmt)
         return result.scalar_one_or_none() is not None

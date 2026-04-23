@@ -18,18 +18,6 @@ from app.modules.link_analysis.domain.value_objects.url_vo import URL
 
 
 class AnalyzeLinkUseCase:
-    """
-    Caso de uso: analisar a segurança de um link.
-
-    Fluxo:
-        1. Valida e constrói o Value Object URL.
-        2. Executa análise via Domain Service.
-        3. Converte score → nível de risco.
-        4. Cria entidade.
-        5. Persiste no repositório.
-        6. Retorna DTO de saída.
-    """
-
     def __init__(
         self,
         repository: LinkAnalysisRepository,
@@ -40,6 +28,7 @@ class AnalyzeLinkUseCase:
 
     def execute(self, input_dto: AnalyzeLinkInputDTO) -> AnalyzeLinkOutputDTO:
         raw_url = input_dto.url.strip()
+        user_id = input_dto.user_id 
 
         # --- Validação ---
         if len(raw_url) > URLTooLongError.MAX_LENGTH:
@@ -54,7 +43,7 @@ class AnalyzeLinkUseCase:
         if scheme not in UnsupportedSchemeError.SUPPORTED_SCHEMES:
             raise UnsupportedSchemeError(scheme)
 
-        # --- 🔥 Análise via SERVICE ---
+        # --- Análise via SERVICE ---
         score, reasons = self._service.analyze(str(url))
 
         # --- Classificação de risco ---
@@ -72,10 +61,9 @@ class AnalyzeLinkUseCase:
             reasons=reasons,
         )
 
-        # --- Persistência ---
-        self._repository.save(analysis)
+        # IMPORTANTE: salvar com user_id
+        self._repository.save(analysis, user_id=user_id)
 
-        # --- Output ---
         return AnalyzeLinkOutputDTO(
             url=str(analysis.url),
             risk=analysis.risk,

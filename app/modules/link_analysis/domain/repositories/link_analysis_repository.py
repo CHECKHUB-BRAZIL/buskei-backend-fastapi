@@ -19,59 +19,31 @@ class LinkAnalysisRepository(ABC):
     """
 
     @abstractmethod
-    def save(self, analysis: LinkAnalysisEntity) -> None:
+    def save(self, analysis: LinkAnalysisEntity, user_id: str) -> None:
         """
-        Persiste uma nova análise.
-
-        Args:
-            analysis: Entidade de análise a ser salva.
-
-        Raises:
-            DuplicateAnalysisError: Se já existir análise para a mesma URL
-                                    em implementações que não permitem duplicatas.
+        Persiste uma nova análise associada a um usuário.
         """
 
     @abstractmethod
-    def find_by_url(self, url: URL) -> Optional[LinkAnalysisEntity]:
+    def find_by_url(self, url: URL, user_id: str) -> Optional[LinkAnalysisEntity]:
         """
-        Busca a análise mais recente associada a uma URL.
-
-        Args:
-            url: Value Object da URL pesquisada.
-
-        Returns:
-            A entidade encontrada ou None se não houver registro.
+        Busca análise de uma URL pertencente a um usuário.
         """
 
     @abstractmethod
-    def find_all(self) -> List[LinkAnalysisEntity]:
+    def find_all(self, user_id: str) -> List[LinkAnalysisEntity]:
         """
-        Retorna todas as análises armazenadas.
-
-        Returns:
-            Lista de entidades (pode ser vazia).
+        Retorna todas as análises de um usuário.
         """
 
     @abstractmethod
-    def delete_by_url(self, url: URL) -> None:
+    def delete_by_url(self, url: URL, user_id: str) -> None:
         """
-        Remove a análise associada a uma URL.
-
-        Args:
-            url: Value Object da URL cujo registro deve ser excluído.
-
-        Raises:
-            AnalysisNotFoundError: Se não existir análise para a URL informada.
+        Remove a análise de uma URL pertencente a um usuário.
         """
 
     @abstractmethod
-    def exists(self, url: URL) -> bool:
+    def exists(self, url: URL, user_id: str) -> bool:
         """
-        Verifica se já existe uma análise registrada para a URL.
-
-        Args:
-            url: Value Object da URL a verificar.
-
-        Returns:
-            True se existir, False caso contrário.
+        Verifica se existe análise para URL dentro do escopo do usuário.
         """
