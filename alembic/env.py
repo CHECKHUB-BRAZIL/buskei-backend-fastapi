@@ -7,13 +7,14 @@ from alembic import context
 from app.core.config import settings
 from app.shared.infrastructure.database.base import Base
 
-# ⚠️ IMPORTANTE: Importar TODOS os models aqui
+# IMPORTANTE: Importar TODOS os models aqui
 from app.modules.auth.infrastructure.models.user_model import UserModel
+from app.modules.link_analysis.infrastructure.models.link_analysis_model import LinkAnalysisModel
 
 # Alembic Config object
 config = context.config
 
-# ⬅️ Sobrescreve sqlalchemy.url com a URL do .env
+# Sobrescreve sqlalchemy.url com a URL do .env
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # Logging
