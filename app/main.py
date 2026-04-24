@@ -2,7 +2,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.core.config import settings
-from app.shared.infrastructure.database.session import init_db
 from app.infra.redis.redis_client import RedisClient
 from app.infra.redis.session_repository import RedisSessionRepository
 from app.modules.auth.presentation.http.routes.auth_routes import router as auth_router
@@ -25,7 +24,6 @@ from app.shared.presentation.middlewares.cors_middleware import setup_cors
 async def lifespan(app: FastAPI):
     print("Iniciando aplicação...")
 
-    init_db()
     redis = RedisClient.get_client()
     app.state.session_repository = RedisSessionRepository(redis)
 
