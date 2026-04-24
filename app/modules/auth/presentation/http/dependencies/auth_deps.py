@@ -1,5 +1,6 @@
 from typing import Annotated
 from fastapi import Depends, Header, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.infra.redis.session_repository import RedisSessionRepository
 from app.modules.auth.application.services.google_token_verifier import GoogleTokenVerifier
 from app.modules.auth.application.services.jwt_service import JwtService
@@ -25,6 +26,8 @@ from app.modules.auth.domain.exceptions.auth_exceptions import InvalidTokenExcep
 from app.core.constants import TOKEN_TYPE_ACCESS
 
 from app.infra.redis.dependencies import get_redis
+
+bearer_scheme = HTTPBearer()
 
 
 # ============================================================
@@ -78,33 +81,19 @@ def get_current_user_usecase(
 # ============================================================
 
 async def get_token_from_header(
-    authorization: Annotated[str | None, Header()] = None
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)
 ) -> str:
     """
-    Extrai token do header Authorization.
-    
-    Espera formato: "Bearer <token>"
-    
-    Raises:
-        HTTPException: Se token não estiver presente ou formato inválido
+    Extrai token do header Authorization usando HTTPBearer.
     """
-    if not authorization:
+    if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token de autenticação não fornecido",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    parts = authorization.split()
-    
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Formato de token inválido. Use: Bearer <token>",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    return parts[1]
+
+    return credentials.credentials
 
 
 async def get_current_user(

@@ -3,7 +3,6 @@ from fastapi import FastAPI
 
 from app.core.config import settings
 from app.shared.infrastructure.database.session import init_db
-from app.shared.presentation.middlewares.auth_middleware import AuthMiddleware
 from app.infra.redis.redis_client import RedisClient
 from app.infra.redis.session_repository import RedisSessionRepository
 from app.modules.auth.presentation.http.routes.auth_routes import router as auth_router
@@ -19,6 +18,7 @@ from app.shared.presentation.exceptions.exception_handlers import (
     generic_exception_handler,
 )
 from app.modules.auth.domain.exceptions.auth_exceptions import AuthException
+from app.shared.presentation.middlewares.cors_middleware import setup_cors
 
 
 @asynccontextmanager
@@ -40,6 +40,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS
+setup_cors(app)
+
 # HEALTH CHECK (rota raiz)
 @app.get("/", tags=["health"])
 def health_check():
@@ -47,10 +50,6 @@ def health_check():
         "status": "healthy",
         "service": "buskei-backend",
     }
-
-
-# middleware
-app.add_middleware(AuthMiddleware)
 
 # REGISTRA AS ROTAS
 app.include_router(auth_router, prefix="/api/v1")
