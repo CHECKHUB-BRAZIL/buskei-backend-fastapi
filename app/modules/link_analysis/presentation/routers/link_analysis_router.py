@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.presentation.http.dependencies.auth_deps import get_current_user
 from app.modules.link_analysis.application.dtos.link_analysis_dto import AnalyzeLinkInputDTO, GetAnalysisInputDTO, ListAnalysesInputDTO
+from app.modules.link_analysis.domain.services.link_analysis_service import LinkAnalysisService
 from app.shared.infrastructure.database.session import get_db
 
 from app.modules.link_analysis.infrastructure.repositories.link_analysis_repository_impl import (
@@ -41,7 +42,8 @@ def analyze_link(
     user_id: str = Depends(get_current_user),
 ):
     repo = SQLAlchemyLinkAnalysisRepository(db)
-    use_case = AnalyzeLinkUseCase(repo)
+    service = LinkAnalysisService()
+    use_case = AnalyzeLinkUseCase(repo, service)
 
     output = use_case.execute(
         AnalyzeLinkInputDTO(
