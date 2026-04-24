@@ -60,11 +60,12 @@ def analyze_link(
 @router.get("", response_model=AnalysisListResponse)
 def list_analyses(
     db: Session = Depends(get_db),
-    user_id: str = Depends(get_current_user),
+    current_user: UserEntity = Depends(get_current_user),
 ):
     repo = SQLAlchemyLinkAnalysisRepository(db)
     use_case = ListAnalysesUseCase(repo)
 
+    user_id = str(current_user.id.value)
     outputs = use_case.execute(
         ListAnalysesInputDTO(user_id=user_id)
     )
@@ -79,11 +80,12 @@ def list_analyses(
 def get_analysis(
     url: str = Query(...),
     db: Session = Depends(get_db),
-    user_id: str = Depends(get_current_user),
+    current_user: UserEntity = Depends(get_current_user),
 ):
     repo = SQLAlchemyLinkAnalysisRepository(db)
     use_case = GetAnalysisUseCase(repo)
 
+    user_id = str(current_user.id.value)
     output = use_case.execute(
         GetAnalysisInputDTO(
             url=url,
@@ -98,11 +100,12 @@ def get_analysis(
 def delete_analysis(
     url: str = Query(...),
     db: Session = Depends(get_db),
-    user_id: str = Depends(get_current_user),
+    current_user: UserEntity = Depends(get_current_user),
 ):
     repo = SQLAlchemyLinkAnalysisRepository(db)
     use_case = DeleteAnalysisUseCase(repo)
 
+    user_id = str(current_user.id.value)
     use_case.execute(
         DeleteAnalysisInputDTO(
             url=url,

@@ -22,16 +22,12 @@ SessionLocal = sessionmaker(
 
 
 def get_db() -> Generator[Session, None, None]:
-    """
-    Dependency do FastAPI para obter sessão do banco.
-    
-    Uso:
-    @router.get("/users")
-    def get_users(db: Session = Depends(get_db)):
-        ...
-    """
     db = SessionLocal()
     try:
         yield db
+        db.commit()  # salva no banco no final da request
+    except:
+        db.rollback()  # desfaz se der erro
+        raise
     finally:
         db.close()
