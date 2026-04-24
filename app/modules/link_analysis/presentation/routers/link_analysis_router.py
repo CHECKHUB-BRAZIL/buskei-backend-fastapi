@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
+from app.modules.auth.domain.entities.user_entity import UserEntity
 from app.modules.auth.presentation.http.dependencies.auth_deps import get_current_user
 from app.modules.link_analysis.application.dtos.link_analysis_dto import AnalyzeLinkInputDTO, GetAnalysisInputDTO, ListAnalysesInputDTO
 from app.modules.link_analysis.domain.services.link_analysis_service import LinkAnalysisService
@@ -39,11 +40,12 @@ router = APIRouter(prefix="/links", tags=["Link Analysis"])
 def analyze_link(
     body: AnalyzeLinkRequest,
     db: Session = Depends(get_db),
-    user_id: str = Depends(get_current_user),
+    current_user: UserEntity = Depends(get_current_user),
 ):
     repo = SQLAlchemyLinkAnalysisRepository(db)
-    service = LinkAnalysisService()
-    use_case = AnalyzeLinkUseCase(repo, service)
+    use_case = AnalyzeLinkUseCase(repo, LinkAnalysisService())
+
+    user_id = str(current_user.id.value)
 
     output = use_case.execute(
         AnalyzeLinkInputDTO(

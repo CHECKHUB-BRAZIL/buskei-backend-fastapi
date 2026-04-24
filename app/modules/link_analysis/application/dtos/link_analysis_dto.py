@@ -23,7 +23,6 @@ class AnalyzeLinkOutputDTO:
     risk: str                  # "safe" | "medium" | "high"
     reasons: List[str]
     created_at: datetime
-    user_id: str 
 
 
 @dataclass(frozen=True)
@@ -52,7 +51,6 @@ class GetAnalysisOutputDTO:
     risk: str
     reasons: List[str]
     created_at: datetime
-    user_id: str 
 
 
 @dataclass(frozen=True)
