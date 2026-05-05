@@ -8,7 +8,6 @@ _FEBRABAN_FACTOR_BASE = 1000
 
 # Fator máximo antes do ciclo (reinicia em 1000 após atingir 9999)
 _FACTOR_MAX = 9999
-_FACTOR_CYCLE_RESET = 1000
 
 
 @dataclass(frozen=True)
