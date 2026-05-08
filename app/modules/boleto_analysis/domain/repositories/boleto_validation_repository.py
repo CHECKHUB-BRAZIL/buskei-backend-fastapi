@@ -4,63 +4,96 @@ from typing import List, Optional
 from app.modules.boleto_analysis.domain.entities.boleto_validation_entity import (
     BoletoValidationEntity,
 )
-from app.modules.boleto_analysis.domain.value_objects.boleto_code_vo import BoletoCode
+
+from app.modules.boleto_analysis.domain.value_objects.boleto_code_vo import (
+    BoletoCode,
+)
 
 
 class BoletoValidationRepository(ABC):
     """
     Contrato (porta) do repositório de validações de boletos.
-
-    Responsabilidades:
-    - Definir as operações de persistência necessárias ao domínio.
-    - Permanecer completamente agnóstico à tecnologia de storage.
-
-    A implementação concreta fica na camada de infraestrutura,
-    seguindo o princípio de Inversão de Dependência (DIP).
     """
 
-    @abstractmethod
-    def save(self, validation: BoletoValidationEntity) -> None:
-        """
-        Persiste uma nova validação de boleto.
-
-        Raises:
-            DuplicateBoletoValidationError: se já existir validação
-                para o mesmo código (em implementações que não permitem duplicatas).
-        """
+    # ------------------------------------------------------------------
+    # Save
+    # ------------------------------------------------------------------
 
     @abstractmethod
-    def find_by_code(self, code: BoletoCode) -> Optional[BoletoValidationEntity]:
+    def save(
+        self,
+        validation: BoletoValidationEntity,
+    ) -> None:
         """
-        Busca a validação mais recente associada a um código de boleto.
+        Persiste uma nova validação.
+        """
 
-        Returns:
-            A entidade encontrada ou None se não houver registro.
-        """
-
-    @abstractmethod
-    def find_all(self) -> List[BoletoValidationEntity]:
-        """
-        Retorna todas as validações armazenadas, ordenadas da mais recente.
-
-        Returns:
-            Lista de entidades (pode ser vazia).
-        """
+    # ------------------------------------------------------------------
+    # Find by code
+    # ------------------------------------------------------------------
 
     @abstractmethod
-    def delete_by_code(self, code: BoletoCode) -> None:
+    def find_by_code(
+        self,
+        code: BoletoCode,
+        user_id: str,
+    ) -> Optional[BoletoValidationEntity]:
         """
-        Remove a validação associada a um código de boleto.
+        Busca uma validação de boleto do usuário.
+        """
 
-        Raises:
-            BoletoValidationNotFoundError: se não existir validação para o código.
-        """
+    # ------------------------------------------------------------------
+    # Find all
+    # ------------------------------------------------------------------
 
     @abstractmethod
-    def exists(self, code: BoletoCode) -> bool:
+    def find_all(
+        self,
+        user_id: str,
+    ) -> List[BoletoValidationEntity]:
         """
-        Verifica se já existe uma validação registrada para o código.
+        Lista todas as validações do usuário.
+        """
 
-        Returns:
-            True se existir, False caso contrário.
+    # ------------------------------------------------------------------
+    # Delete
+    # ------------------------------------------------------------------
+
+    @abstractmethod
+    def delete_by_code(
+        self,
+        code: BoletoCode,
+        user_id: str,
+    ) -> None:
+        """
+        Remove uma validação do usuário.
+        """
+
+    # ------------------------------------------------------------------
+    # Exists
+    # ------------------------------------------------------------------
+
+    @abstractmethod
+    def exists(
+        self,
+        code: BoletoCode,
+        user_id: str,
+    ) -> bool:
+        """
+        Verifica se o usuário já possui validação
+        para esse boleto.
+        """
+
+    # ------------------------------------------------------------------
+    # Find by status
+    # ------------------------------------------------------------------
+
+    @abstractmethod
+    def find_by_status(
+        self,
+        status: str,
+        user_id: str,
+    ) -> List[BoletoValidationEntity]:
+        """
+        Busca validações por status para um usuário.
         """

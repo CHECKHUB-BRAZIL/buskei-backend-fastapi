@@ -1,10 +1,13 @@
 from app.modules.boleto_analysis.application.dtos.boleto_validation_dto import (
     BoletoValidationSummaryDTO,
+    ListBoletoValidationsInputDTO,
     ListBoletoValidationsOutputDTO,
 )
+
 from app.modules.boleto_analysis.application.dtos.boleto_validation_dto_mapper import (
     BoletoValidationDTOMapper,
 )
+
 from app.modules.boleto_analysis.domain.repositories.boleto_validation_repository import (
     BoletoValidationRepository,
 )
@@ -12,22 +15,23 @@ from app.modules.boleto_analysis.domain.repositories.boleto_validation_repositor
 
 class ListBoletoValidationsUseCase:
     """
-    Caso de uso: listar todas as validações de boletos já realizadas.
-
-    Retorna uma versão resumida (SummaryDTO) para economizar payload,
-    adequada para listagens e dashboards.
-
-    Fluxo:
-        1. Busca todas as entidades no repositório (ordenadas por data desc).
-        2. Converte cada uma para SummaryDTO.
-        3. Retorna envelope com total e itens.
+    Caso de uso: listar validações do usuário.
     """
 
-    def __init__(self, repository: BoletoValidationRepository) -> None:
+    def __init__(
+        self,
+        repository: BoletoValidationRepository,
+    ) -> None:
         self._repository = repository
 
-    def execute(self) -> ListBoletoValidationsOutputDTO:
-        entities = self._repository.find_all()
+    def execute(
+        self,
+        input_dto: ListBoletoValidationsInputDTO,
+    ) -> ListBoletoValidationsOutputDTO:
+
+        entities = self._repository.find_all_by_user_id(
+            user_id=input_dto.user_id,
+        )
 
         items: list[BoletoValidationSummaryDTO] = [
             BoletoValidationDTOMapper.to_summary_dto(entity)
