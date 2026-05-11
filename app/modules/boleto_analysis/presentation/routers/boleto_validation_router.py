@@ -1,4 +1,10 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
+
+from app.modules.auth.domain.entities.user_entity import UserEntity
+
+from app.modules.auth.presentation.http.dependencies.auth_deps import (
+    get_current_user,
+)
 
 from app.modules.boleto_analysis.application.dtos.boleto_validation_dto import (
     ValidateBoletoInputDTO,
@@ -23,10 +29,6 @@ router = APIRouter(
 )
 
 
-# ==========================================================
-# POST /boletos/validate
-# ==========================================================
-
 @router.post(
     "/validate",
     response_model=BoletoValidationResponse,
@@ -34,9 +36,11 @@ router = APIRouter(
 )
 def validate_boleto(
     body: ValidateBoletoRequest,
+    current_user: UserEntity = Depends(get_current_user),
 ):
     """
     Executa análise antifraude do boleto.
+    Requer autenticação.
     """
 
     analysis_service = BoletoAnalysisService()
