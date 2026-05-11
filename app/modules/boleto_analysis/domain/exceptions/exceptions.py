@@ -1,19 +1,25 @@
 class BoletoDomainError(Exception):
     """
     Exceção base do domínio de validação de boletos.
-    Todas as exceções de domínio herdam desta classe,
-    permitindo captura genérica na camada de aplicação.
+
+    Usada apenas para erros que impedem o processamento do boleto
+    (erros estruturais, parsing inválido, etc).
     """
-    
+    pass
+
+
+# ==========================================================
+# ERROS DE VALIDAÇÃO (BLOQUEANTES)
+# ==========================================================
 
 class InvalidBoletoCodeError(BoletoDomainError):
     """
-    Levantada quando o código do boleto é inválido.
+    Levantada quando o código do boleto é estruturalmente inválido.
 
-    Causas possíveis:
-    - Tamanho incorreto (não é 44, 47 ou 48 dígitos)
+    Casos reais:
     - Contém caracteres não numéricos
-    - Dígito verificador incorreto
+    - Tamanho inválido impossível de interpretar
+    - Falha na conversão de linha digitável
     """
 
     def __init__(self, code: str, reason: str = "Código de boleto inválido.") -> None:
@@ -26,10 +32,10 @@ class InvalidAmountError(BoletoDomainError):
     """
     Levantada quando o valor monetário extraído do boleto é inválido.
 
-    Causas possíveis:
-    - Valor negativo
-    - Formato não numérico
-    - Sequência de dígitos de valor com tamanho incorreto
+    Casos reais:
+    - Formato inválido
+    - Conversão impossível
+    - Valor corrompido estruturalmente
     """
 
     def __init__(self, raw: str, reason: str = "Valor monetário inválido.") -> None:
@@ -40,10 +46,8 @@ class InvalidAmountError(BoletoDomainError):
 
 class UnsupportedBoletoTypeError(BoletoDomainError):
     """
-    Levantada quando o tipo do boleto não é reconhecido.
-
-    O domínio suporta apenas boletos de cobrança (bancários)
-    e de convênio (concessionárias/governo — iniciam com '8').
+    Levantada quando o boleto não pertence aos tipos suportados
+    pelo domínio (cobrança ou convênio).
     """
 
     SUPPORTED_TYPES = ("cobranca", "convenio")
@@ -51,28 +55,6 @@ class UnsupportedBoletoTypeError(BoletoDomainError):
     def __init__(self, identifier: str) -> None:
         self.identifier = identifier
         super().__init__(
-            f"Tipo de boleto não suportado identificado por: '{identifier}'. "
+            f"Tipo de boleto não suportado: '{identifier}'. "
             f"Tipos aceitos: {', '.join(self.SUPPORTED_TYPES)}."
         )
-
-
-class BoletoValidationNotFoundError(BoletoDomainError):
-    """
-    Levantada quando uma validação buscada por código não existe
-    no repositório.
-    """
-
-    def __init__(self, code: str) -> None:
-        self.code = code
-        super().__init__(f"Nenhuma validação encontrada para o código: '{code}'")
-
-
-class DuplicateBoletoValidationError(BoletoDomainError):
-    """
-    Levantada quando se tenta persistir uma validação para um código
-    de boleto que já foi validado anteriormente.
-    """
-
-    def __init__(self, code: str) -> None:
-        self.code = code
-        super().__init__(f"Já existe uma validação registrada para o código: '{code}'")

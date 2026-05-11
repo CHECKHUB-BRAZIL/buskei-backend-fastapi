@@ -1,82 +1,110 @@
 from app.modules.boleto_analysis.domain.exceptions.exceptions import (
     BoletoDomainError,
-    BoletoValidationNotFoundError,
-    DuplicateBoletoValidationError,
     InvalidAmountError,
     InvalidBoletoCodeError,
     UnsupportedBoletoTypeError,
 )
 
 
-# ---------------------------------------------------------------------------
-# Hierarquia de exceções da camada de aplicação
-# ---------------------------------------------------------------------------
+# ==========================================================
+# BASE
+# ==========================================================
 
 class BoletoApplicationError(Exception):
     """
-    Exceção base da camada de aplicação de boletos.
-    Carrega o HTTP status code sugerido para a apresentação.
+    Exceção base da camada de aplicação.
     """
 
-    def __init__(self, message: str, status_code: int = 400) -> None:
+    def __init__(
+        self,
+        message: str,
+        status_code: int = 400,
+    ) -> None:
         self.message = message
         self.status_code = status_code
+
         super().__init__(message)
 
 
+# ==========================================================
+# VALIDAÇÃO / INPUT
+# ==========================================================
+
 class BoletoValidationError(BoletoApplicationError):
-    """Erro de validação de entrada — código malformado, valor inválido (400)."""
+    """
+    Erros estruturais do boleto:
+    - parsing
+    - tamanho inválido
+    - valor inválido
+    """
 
     def __init__(self, message: str) -> None:
-        super().__init__(message, status_code=400)
+        super().__init__(
+            message=message,
+            status_code=400,
+        )
 
 
-class BoletoNotFoundError(BoletoApplicationError):
-    """Validação não encontrada para o código informado (404)."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message, status_code=404)
-
-
-class BoletoConflictError(BoletoApplicationError):
-    """Tentativa de persistir validação duplicada (409)."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message, status_code=409)
-
+# ==========================================================
+# TIPO NÃO SUPORTADO
+# ==========================================================
 
 class BoletoUnsupportedTypeError(BoletoApplicationError):
-    """Tipo de boleto não suportado pelo sistema (422)."""
+    """
+    Tipo de boleto não suportado.
+    """
 
     def __init__(self, message: str) -> None:
-        super().__init__(message, status_code=422)
+        super().__init__(
+            message=message,
+            status_code=422,
+        )
 
 
-# ---------------------------------------------------------------------------
-# Mapeador: exceções de domínio → exceções de aplicação
-# ---------------------------------------------------------------------------
+# ==========================================================
+# FALLBACK
+# ==========================================================
 
-def map_domain_exception(exc: BoletoDomainError) -> BoletoApplicationError:
+class BoletoInternalError(BoletoApplicationError):
     """
-    Traduz exceções de domínio para exceções da camada de aplicação.
-
-    Centraliza a conversão em um único ponto, mantendo os use cases
-    e a apresentação desacoplados do domínio.
-
-    Usage:
-        except BoletoDomainError as exc:
-            raise map_domain_exception(exc)
+    Erro interno inesperado.
     """
+
+    def __init__(
+        self,
+        message: str = "Erro interno ao processar boleto.",
+    ) -> None:
+        super().__init__(
+            message=message,
+            status_code=500,
+        )
+
+
+# ==========================================================
+# DOMAIN -> APPLICATION
+# ==========================================================
+
+def map_domain_exception(
+    exc: BoletoDomainError,
+) -> BoletoApplicationError:
+    """
+    Traduz erros do domínio para erros HTTP/application.
+    """
+
     mapping = {
-        InvalidBoletoCodeError:       lambda e: BoletoValidationError(str(e)),
-        InvalidAmountError:           lambda e: BoletoValidationError(str(e)),
-        UnsupportedBoletoTypeError:   lambda e: BoletoUnsupportedTypeError(str(e)),
-        BoletoValidationNotFoundError: lambda e: BoletoNotFoundError(str(e)),
-        DuplicateBoletoValidationError: lambda e: BoletoConflictError(str(e)),
+        InvalidBoletoCodeError:
+            lambda e: BoletoValidationError(str(e)),
+
+        InvalidAmountError:
+            lambda e: BoletoValidationError(str(e)),
+
+        UnsupportedBoletoTypeError:
+            lambda e: BoletoUnsupportedTypeError(str(e)),
     }
 
     handler = mapping.get(type(exc))
+
     if handler:
         return handler(exc)
 
-    return BoletoApplicationError(str(exc), status_code=500)
+    return BoletoInternalError(str(exc))
