@@ -9,7 +9,6 @@ from app.shared.infrastructure.database.base import Base
 
 # IMPORTANTE: Importar TODOS os models aqui
 from app.modules.auth.infrastructure.models.user_model import UserModel
-from app.modules.link_analysis.infrastructure.models.link_analysis_model import LinkAnalysisModel
 
 # Alembic Config object
 config = context.config

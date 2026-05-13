@@ -4,6 +4,7 @@ class LinkAnalysisDomainError(Exception):
     Todas as exceções de domínio herdam desta classe,
     permitindo captura genérica na camada de aplicação.
     """
+    pass
 
 
 class InvalidURLError(LinkAnalysisDomainError):
@@ -57,26 +58,3 @@ class UnsupportedSchemeError(LinkAnalysisDomainError):
             f"Scheme '{scheme}' não suportado. "
             f"Schemes aceitos: {', '.join(self.SUPPORTED_SCHEMES)}."
         )
-
-
-class AnalysisNotFoundError(LinkAnalysisDomainError):
-    """
-    Levantada quando uma análise buscada por URL não existe
-    no repositório.
-    """
-
-    def __init__(self, url: str) -> None:
-        self.url = url
-        super().__init__(f"Nenhuma análise encontrada para a URL: '{url}'")
-
-
-class DuplicateAnalysisError(LinkAnalysisDomainError):
-    """
-    Levantada quando se tenta persistir uma análise para uma URL
-    que já foi analisada, em contextos onde duplicatas não são
-    permitidas.
-    """
-
-    def __init__(self, url: str) -> None:
-        self.url = url
-        super().__init__(f"Já existe uma análise registrada para a URL: '{url}'")

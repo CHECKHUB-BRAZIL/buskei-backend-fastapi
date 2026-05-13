@@ -40,20 +40,6 @@ class AnalysisResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class AnalysisListResponse(BaseModel):
-    """Resposta para listagem de todas as analises."""
-
-    total: int
-    items: List[AnalysisResponse]
-
-
-class DeleteAnalysisResponse(BaseModel):
-    """Confirmacao de exclusao."""
-
-    message: str
-    url: str
-
-
 class ErrorResponse(BaseModel):
     """Formato padrao de erro retornado pela API."""
 

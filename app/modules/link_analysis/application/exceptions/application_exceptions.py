@@ -1,6 +1,4 @@
 from app.modules.link_analysis.domain.exceptions.exceptions import (
-    AnalysisNotFoundError,
-    DuplicateAnalysisError,
     InvalidURLError,
     LinkAnalysisDomainError,
     URLTooLongError,
@@ -8,65 +6,89 @@ from app.modules.link_analysis.domain.exceptions.exceptions import (
 )
 
 
-class ApplicationError(Exception):
+# ==========================================================
+# BASE
+# ==========================================================
+
+class LinkAnalysisApplicationError(Exception):
     """
     Exceção base da camada de aplicação.
-    Carrega um código de status HTTP sugerido para a apresentação.
     """
 
-    def __init__(self, message: str, status_code: int = 400) -> None:
+    def __init__(
+        self,
+        message: str,
+        status_code: int = 400,
+    ) -> None:
         self.message = message
         self.status_code = status_code
+
         super().__init__(message)
 
 
-class ValidationError(ApplicationError):
-    """Erro de validação de entrada (400)."""
+# ==========================================================
+# VALIDATION
+# ==========================================================
 
-    def __init__(self, message: str) -> None:
-        super().__init__(message, status_code=400)
-
-
-class NotFoundError(ApplicationError):
-    """Recurso não encontrado (404)."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message, status_code=404)
-
-
-class ConflictError(ApplicationError):
-    """Conflito de dados, ex: duplicata (409)."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message, status_code=409)
-
-
-# ---------------------------------------------------------------------------
-# Mapeador: exceções de domínio → exceções de aplicação
-# ---------------------------------------------------------------------------
-
-def map_domain_exception(exc: LinkAnalysisDomainError) -> ApplicationError:
+class LinkValidationError(LinkAnalysisApplicationError):
     """
-    Traduz exceções de domínio para exceções da camada de aplicação.
-
-    Centraliza a conversão em um único ponto, mantendo os casos de uso
-    limpos e a apresentação desacoplada do domínio.
-
-    Usage (dentro de um use case ou na apresentação):
-        except LinkAnalysisDomainError as exc:
-            raise map_domain_exception(exc)
+    Erros estruturais da URL:
+    - URL inválida
+    - tamanho excessivo
+    - scheme não suportado
     """
+
+    def __init__(self, message: str) -> None:
+        super().__init__(
+            message=message,
+            status_code=400,
+        )
+
+
+# ==========================================================
+# INTERNAL
+# ==========================================================
+
+class LinkAnalysisInternalError(LinkAnalysisApplicationError):
+    """
+    Erro interno inesperado.
+    """
+
+    def __init__(
+        self,
+        message: str = "Erro interno ao analisar link.",
+    ) -> None:
+        super().__init__(
+            message=message,
+            status_code=500,
+        )
+
+
+# ==========================================================
+# DOMAIN -> APPLICATION
+# ==========================================================
+
+def map_domain_exception(
+    exc: LinkAnalysisDomainError,
+) -> LinkAnalysisApplicationError:
+    """
+    Traduz erros do domínio para erros HTTP/application.
+    """
+
     mapping = {
-        InvalidURLError: lambda e: ValidationError(str(e)),
-        URLTooLongError: lambda e: ValidationError(str(e)),
-        UnsupportedSchemeError: lambda e: ValidationError(str(e)),
-        AnalysisNotFoundError: lambda e: NotFoundError(str(e)),
-        DuplicateAnalysisError: lambda e: ConflictError(str(e)),
+        InvalidURLError:
+            lambda e: LinkValidationError(str(e)),
+
+        URLTooLongError:
+            lambda e: LinkValidationError(str(e)),
+
+        UnsupportedSchemeError:
+            lambda e: LinkValidationError(str(e)),
     }
 
     handler = mapping.get(type(exc))
+
     if handler:
         return handler(exc)
 
-    # fallback genérico para exceções de domínio não mapeadas
-    return ApplicationError(str(exc), status_code=500)
+    return LinkAnalysisInternalError(str(exc))
