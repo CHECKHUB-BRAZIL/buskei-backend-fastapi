@@ -29,7 +29,7 @@ class AnalyzeLinkRequest(BaseModel):
 # Responses
 # ---------------------------------------------------------------------------
 
-class AnalysisResponse(BaseModel):
+class AnalyzeLinkResponse(BaseModel):
     """Resposta padrao para operacoes de analise."""
 
     url: str

@@ -1,78 +1,97 @@
-from typing import List
+from app.modules.link_analysis.application.dtos.link_analysis_dto import (
+    AnalyzeLinkInputDTO,
+    AnalyzeLinkOutputDTO,
+)
 
-from pydantic import BaseModel, Field, field_validator
+from app.modules.link_analysis.domain.exceptions.exceptions import (
+    InvalidURLError,
+    URLTooLongError,
+    UnsupportedSchemeError,
+)
+
+from app.modules.link_analysis.domain.services.link_analysis_service import (
+    LinkAnalysisService,
+)
+
+from app.modules.link_analysis.domain.value_objects.url_vo import (
+    URLVO,
+)
 
 
-# ==========================================================
-# REQUEST
-# ==========================================================
-
-class AnalyzeLinkRequest(BaseModel):
+class AnalyzeLinkUseCase:
     """
-    Payload de entrada para análise de link.
-    """
-
-    url: str = Field(
-        ...,
-        min_length=1,
-        max_length=2083,
-        examples=[
-            "https://google.com",
-            "https://secure-login-bank.xyz/login",
-        ],
-        description=(
-            "URL completa a ser analisada. "
-            "Deve incluir http:// ou https://."
-        ),
-    )
-
-    @field_validator("url")
-    @classmethod
-    def strip_whitespace(cls, value: str) -> str:
-        return value.strip()
-
-
-# ==========================================================
-# RESPONSE
-# ==========================================================
-
-class AnalyzeLinkResponse(BaseModel):
-    """
-    Resultado da análise antifraude do link.
+    Caso de uso responsável por:
+    - validar URL
+    - executar análise heurística antifraude
+    - retornar DTO para apresentação
     """
 
-    url: str
+    def __init__(
+        self,
+        service: LinkAnalysisService,
+    ) -> None:
+        self._service = service
 
-    risk: str = Field(
-        description="LOW | MEDIUM | HIGH"
-    )
+    def execute(
+        self,
+        input_dto: AnalyzeLinkInputDTO,
+    ) -> AnalyzeLinkOutputDTO:
 
-    risk_score: int = Field(
-        description="Pontuação numérica de risco."
-    )
+        raw_url = input_dto.url.strip()
 
-    reasons: List[str] = Field(
-        description="Motivos de risco identificados."
-    )
+        # ======================================================
+        # TAMANHO
+        # ======================================================
 
-    positives: List[str] = Field(
-        description="Indicadores positivos encontrados."
-    )
+        if len(raw_url) > URLTooLongError.MAX_LENGTH:
+            raise URLTooLongError(raw_url)
 
-    model_config = {
-        "from_attributes": True
-    }
+        # ======================================================
+        # URL VO
+        # ======================================================
 
+        try:
+            url = URLVO(value=raw_url)
 
-# ==========================================================
-# ERROR RESPONSE
-# ==========================================================
+        except ValueError:
+            raise InvalidURLError(raw_url)
 
-class ErrorResponse(BaseModel):
-    """
-    Formato padrão de erro da API.
-    """
+        # ======================================================
+        # SCHEME
+        # ======================================================
 
-    error: str
-    detail: str
-    status_code: int
+        scheme = url.value.split("://")[0]
+
+        if scheme not in UnsupportedSchemeError.SUPPORTED_SCHEMES:
+            raise UnsupportedSchemeError(scheme)
+
+        # ======================================================
+        # ANÁLISE
+        # ======================================================
+
+        risk_score, reasons, positives = self._service.analyze(url)
+
+        # ======================================================
+        # CLASSIFICAÇÃO
+        # ======================================================
+
+        if risk_score >= 70:
+            risk = "HIGH"
+
+        elif risk_score >= 40:
+            risk = "MEDIUM"
+
+        else:
+            risk = "LOW"
+
+        # ======================================================
+        # OUTPUT
+        # ======================================================
+
+        return AnalyzeLinkOutputDTO(
+            url=str(url),
+            risk=risk,
+            risk_score=risk_score,
+            reasons=reasons,
+            positives=positives,
+        )

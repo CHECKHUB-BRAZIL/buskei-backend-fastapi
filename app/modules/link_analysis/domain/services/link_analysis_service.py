@@ -3,7 +3,7 @@ import re
 import tldextract
 
 from app.modules.link_analysis.domain.value_objects.url_vo import (
-    URL,
+    URLVO,
 )
 
 
@@ -21,7 +21,7 @@ class LinkAnalysisService:
 
     def analyze(
         self,
-        url: URL,
+        url: URLVO,
     ) -> tuple[int, list[str], list[str]]:
         """
         Retorna:
