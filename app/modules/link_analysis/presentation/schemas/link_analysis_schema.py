@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import List
 
 from pydantic import BaseModel, Field, field_validator
@@ -9,14 +8,12 @@ from pydantic import BaseModel, Field, field_validator
 # ---------------------------------------------------------------------------
 
 class AnalyzeLinkRequest(BaseModel):
-    """Payload de entrada para analise de um link."""
-
     url: str = Field(
         ...,
         min_length=1,
         max_length=2083,
         examples=["https://www.google.com"],
-        description="URL completa a ser analisada (deve incluir scheme http/https).",
+        description="URL completa a ser analisada.",
     )
 
     @field_validator("url")
@@ -30,19 +27,30 @@ class AnalyzeLinkRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 class AnalyzeLinkResponse(BaseModel):
-    """Resposta padrao para operacoes de analise."""
-
     url: str
-    risk: str = Field(description="Nivel de risco: safe | medium | high")
-    reasons: List[str] = Field(description="Motivos que levaram ao risco identificado.")
-    created_at: datetime
 
-    model_config = {"from_attributes": True}
+    risk: str = Field(
+        description="Nivel de risco: LOW | MEDIUM | HIGH"
+    )
+
+    risk_score: int = Field(
+        description="Pontuação numérica de risco."
+    )
+
+    reasons: List[str] = Field(
+        description="Motivos de risco encontrados."
+    )
+
+    positives: List[str] = Field(
+        description="Indicadores positivos encontrados."
+    )
+
+    model_config = {
+        "from_attributes": True
+    }
 
 
 class ErrorResponse(BaseModel):
-    """Formato padrao de erro retornado pela API."""
-
     error: str
     detail: str
     status_code: int
