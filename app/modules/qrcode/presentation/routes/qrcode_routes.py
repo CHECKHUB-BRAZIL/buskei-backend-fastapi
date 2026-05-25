@@ -13,10 +13,6 @@ from app.modules.auth.presentation.http.dependencies.auth_deps import (
     get_current_user,
 )
 
-from app.modules.qrcode.application.dto.qrcode_response import (
-    QRCodeResponse,
-)
-
 from app.modules.qrcode.application.usecases.analyze_qrcode_usecase import (
     AnalyzeQRCodeUseCase,
 )
@@ -28,6 +24,10 @@ from app.modules.qrcode.domain.exceptions.qrcode_exceptions import (
 
 from app.modules.qrcode.infrastructure.services.pyzbar_qrcode_service import (
     PyzbarQRCodeService,
+)
+
+from app.modules.qrcode.presentation.schemas.qrcode_response_schema import (
+    QRCodeResponseSchema,
 )
 
 router = APIRouter(
@@ -52,7 +52,7 @@ analyze_qrcode_usecase = AnalyzeQRCodeUseCase(
 
 @router.post(
     "/analyze",
-    response_model=QRCodeResponse,
+    response_model=QRCodeResponseSchema,
     status_code=status.HTTP_200_OK,
 )
 async def analyze_qrcode(
@@ -85,7 +85,14 @@ async def analyze_qrcode(
             image_bytes=image_bytes,
         )
 
-        return result
+        return QRCodeResponseSchema(
+            raw_value=result.raw_value,
+            qr_type=result.qr_type,
+            is_safe=result.is_safe,
+            risk_score=result.risk_score,
+            status=result.status,
+            reasons=result.reasons,
+        )
 
     except InvalidQRCodeException as e:
         raise HTTPException(
