@@ -17,11 +17,6 @@ from app.modules.qrcode.application.usecases.analyze_qrcode_usecase import (
     AnalyzeQRCodeUseCase,
 )
 
-from app.modules.qrcode.domain.exceptions.qrcode_exceptions import (
-    InvalidQRCodeException,
-    QRCodeDomainException,
-)
-
 from app.modules.qrcode.infrastructure.services.pyzbar_qrcode_service import (
     PyzbarQRCodeService,
 )
@@ -68,7 +63,7 @@ async def analyze_qrcode(
     """
 
     if not file.content_type.startswith(
-        "image/"
+        "image/",
     ):
         raise HTTPException(
             status_code=400,
@@ -78,39 +73,23 @@ async def analyze_qrcode(
             ),
         )
 
-    try:
-        image_bytes = await file.read()
+    image_bytes = await file.read()
 
-        result = analyze_qrcode_usecase.execute(
-            image_bytes=image_bytes,
-        )
+    result = analyze_qrcode_usecase.execute(
+        image_bytes=image_bytes,
+    )
 
-        return QRCodeResponseSchema(
-            raw_value=result.raw_value,
-            qr_type=result.qr_type,
-            is_safe=result.is_safe,
-            risk_score=result.risk_score,
-            status=result.status,
-            reasons=result.reasons,
-        )
-
-    except InvalidQRCodeException as e:
-        raise HTTPException(
-            status_code=400,
-            detail=str(e),
-        )
-
-    except QRCodeDomainException as e:
-        raise HTTPException(
-            status_code=422,
-            detail=str(e),
-        )
-
-    except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Erro interno ao analisar "
-                "QRCode."
-            ),
-        )
+    return QRCodeResponseSchema(
+        raw_value=result.raw_value,
+        qrcode_type=result.qrcode_type,
+        is_valid=result.is_valid,
+        risk_score=result.risk_score,
+        status=result.status,
+        reason=result.reason,
+        pix_key=result.pix_key,
+        merchant_name=result.merchant_name,
+        amount=result.amount,
+        detected_url=result.detected_url,
+        is_suspicious_url=result.is_suspicious_url,
+        has_unknown_domain=result.has_unknown_domain,
+    )

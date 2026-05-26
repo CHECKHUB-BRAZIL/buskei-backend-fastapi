@@ -25,8 +25,16 @@ from app.modules.boleto_analysis.presentation.exception_handlers import (
     register_boleto_exception_handlers,
 )
 
+from app.modules.link_analysis.presentation.exception_handlers import (
+    register_exception_handlers
+)
+
 from app.modules.auth.domain.exceptions.auth_exceptions import (
     AuthException,
+)
+
+from app.modules.qrcode.presentation.exception_handlers import (
+    register_qrcode_exception_handlers,
 )
 
 from app.shared.presentation.exceptions.exception_handlers import (
@@ -34,6 +42,10 @@ from app.shared.presentation.exceptions.exception_handlers import (
     validation_exception_handler,
     database_exception_handler,
     generic_exception_handler,
+)
+
+from app.modules.qrcode.presentation.routes.qrcode_routes import (
+    router as qrcode_router,
 )
 
 from app.shared.presentation.middlewares.cors_middleware import (
@@ -109,6 +121,11 @@ app.include_router(
     prefix="/api/v1",
 )
 
+app.include_router(
+    qrcode_router,
+    prefix="/api/v1",
+)
+
 
 # ---------------------------------------------------------------------------
 # Exception Handlers
@@ -122,6 +139,10 @@ app.add_exception_handler(
 
 # boleto module (antifraude + validation errors)
 register_boleto_exception_handlers(app)
+
+register_exception_handlers(app)
+
+register_qrcode_exception_handlers(app)
 
 # pydantic validation
 app.add_exception_handler(
