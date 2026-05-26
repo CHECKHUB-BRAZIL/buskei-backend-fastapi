@@ -11,13 +11,9 @@ class QRCodeResponseSchema(BaseModel):
     raw_value: str = Field(
         ...,
         description="Conteúdo bruto encontrado no QRCode",
-        examples=[
-            "https://google.com",
-            "00020126580014BR.GOV.BCB.PIX...",
-        ],
     )
 
-    qr_type: str = Field(
+    qrcode_type: str = Field(
         ...,
         description="Tipo identificado do QRCode",
         examples=[
@@ -27,9 +23,9 @@ class QRCodeResponseSchema(BaseModel):
         ],
     )
 
-    is_safe: bool = Field(
+    is_valid: bool = Field(
         ...,
-        description="Indica se o QRCode aparenta ser seguro",
+        description="Indica se o QRCode é válido",
     )
 
     risk_score: int = Field(
@@ -37,15 +33,11 @@ class QRCodeResponseSchema(BaseModel):
         ge=0,
         le=100,
         description="Pontuação de risco antifraude",
-        examples=[15, 72],
     )
 
     status: str = Field(
         ...,
-        description=(
-            "Status da análise "
-            "(safe | suspicious | malicious)"
-        ),
+        description="Status da análise",
         examples=[
             "safe",
             "suspicious",
@@ -53,9 +45,39 @@ class QRCodeResponseSchema(BaseModel):
         ],
     )
 
-    reasons: list[str] = Field(
-        default_factory=list,
-        description="Motivos e alertas detectados",
+    reason: str | None = Field(
+        default=None,
+        description="Motivo principal da análise",
+    )
+
+    pix_key: str | None = Field(
+        default=None,
+        description="Chave PIX detectada",
+    )
+
+    merchant_name: str | None = Field(
+        default=None,
+        description="Nome do recebedor",
+    )
+
+    amount: float | None = Field(
+        default=None,
+        description="Valor identificado",
+    )
+
+    detected_url: str | None = Field(
+        default=None,
+        description="URL detectada no QRCode",
+    )
+
+    is_suspicious_url: bool = Field(
+        default=False,
+        description="Indica se a URL é suspeita",
+    )
+
+    has_unknown_domain: bool = Field(
+        default=False,
+        description="Indica domínio desconhecido",
     )
 
     class Config:
