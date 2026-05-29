@@ -29,20 +29,3 @@ class QRCodeAnalysisFailedException(
         ),
     ):
         super().__init__(message)
-
-
-class QRCodeImageReadException(
-    QRCodeApplicationException,
-):
-    """
-    Erro ao ler/processar imagem enviada.
-    """
-
-    def __init__(
-        self,
-        message: str = (
-            "Não foi possível processar "
-            "a imagem do QRCode."
-        ),
-    ):
-        super().__init__(message)

@@ -19,7 +19,7 @@ class AnalyzeQRCodeUseCase:
     """
     Use case responsável por:
 
-    - receber imagem
+    - receber conteúdo do QRCode
     - chamar análise antifraude
     - retornar resposta padronizada
     """
@@ -32,7 +32,7 @@ class AnalyzeQRCodeUseCase:
 
     def execute(
         self,
-        image_bytes: bytes,
+        content: str,
     ) -> QRCodeResponse:
         """
         Executa análise antifraude do QRCode.
@@ -40,7 +40,7 @@ class AnalyzeQRCodeUseCase:
 
         try:
             result = self._analyzer_service.analyze(
-                image_bytes=image_bytes,
+                content=content,
             )
 
             return QRCodeResponse(

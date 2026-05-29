@@ -10,8 +10,7 @@ class QRCodeAnalyzerService(ABC):
     """
     Serviço de domínio responsável por:
 
-    - decodificar QRCode
-    - validar estrutura
+    - validar estrutura do QRCode
     - detectar fraude
     - analisar risco
     """
@@ -19,10 +18,10 @@ class QRCodeAnalyzerService(ABC):
     @abstractmethod
     def analyze(
         self,
-        image_bytes: bytes,
+        content: str,
     ) -> QRCodeData:
         """
-        Analisa um QRCode e retorna
-        os dados antifraude.
+        Analisa conteúdo de um QRCode
+        e retorna os dados antifraude.
         """
         pass

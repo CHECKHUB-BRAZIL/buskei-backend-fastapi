@@ -1,11 +1,12 @@
-from io import BytesIO
 from urllib.parse import urlparse
 
-from PIL import Image
-from app.modules.qrcode.domain.exceptions.qrcode_exceptions import InvalidQRCodeException
-from app.modules.qrcode.domain.services.qrcode_decoder_service import QRCodeAnalyzerService
-from pyzbar.pyzbar import decode
+from app.modules.qrcode.domain.exceptions.qrcode_exceptions import (
+    InvalidQRCodeException,
+)
 
+from app.modules.qrcode.domain.services.qrcode_decoder_service import (
+    QRCodeAnalyzerService,
+)
 
 from app.modules.qrcode.domain.value_objects.qrcode_data import (
     QRCodeData,
@@ -14,8 +15,9 @@ from app.modules.qrcode.domain.value_objects.qrcode_data import (
 
 class PyzbarQRCodeService(QRCodeAnalyzerService):
     """
-    Implementação concreta do analyzer de QRCode
-    utilizando pyzbar.
+    Serviço responsável por analisar
+    conteúdo de QRCode e executar
+    verificações antifraude.
     """
 
     SUSPICIOUS_KEYWORDS = [
@@ -42,28 +44,19 @@ class PyzbarQRCodeService(QRCodeAnalyzerService):
 
     def analyze(
         self,
-        image_bytes: bytes,
+        content: str,
     ) -> QRCodeData:
         """
-        Analisa QRCode e executa
-        verificações antifraude.
+        Analisa conteúdo do QRCode.
         """
 
-        image = Image.open(
-            BytesIO(image_bytes)
-        )
-
-        decoded_objects = decode(image)
-
-        if not decoded_objects:
+        if not content:
             raise InvalidQRCodeException()
 
-        raw_value = decoded_objects[0].data.decode(
-            "utf-8"
-        )
+        raw_value = content.strip()
 
         qrcode_type = self._detect_type(
-            raw_value
+            raw_value,
         )
 
         risk_score = 0

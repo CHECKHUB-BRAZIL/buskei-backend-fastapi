@@ -11,14 +11,13 @@ class QRCodeDomainException(Exception):
 
 class InvalidQRCodeException(QRCodeDomainException):
     """
-    QRCode inválido ou malformado.
+    Conteúdo de QRCode inválido.
     """
 
     def __init__(self):
         super().__init__(
-            "O QRCode informado é inválido."
+            "O conteúdo do QRCode é inválido."
         )
-
 
 class SuspiciousQRCodeException(QRCodeDomainException):
     """

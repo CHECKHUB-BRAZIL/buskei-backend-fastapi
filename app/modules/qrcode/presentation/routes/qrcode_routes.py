@@ -1,9 +1,5 @@
 from fastapi import APIRouter
 from fastapi import Depends
-from fastapi import File
-from fastapi import HTTPException
-from fastapi import UploadFile
-from fastapi import status
 
 from app.modules.auth.domain.entities.user_entity import (
     UserEntity,
@@ -17,8 +13,10 @@ from app.modules.qrcode.application.usecases.analyze_qrcode_usecase import (
     AnalyzeQRCodeUseCase,
 )
 
-from app.modules.qrcode.infrastructure.services.pyzbar_qrcode_service import (
-    PyzbarQRCodeService,
+
+from app.modules.qrcode.domain.services.qrcode_decoder_service import QRCodeAnalyzerService
+from app.modules.qrcode.presentation.schemas.qrcode_request_schema import (
+    QRCodeAnalyzeRequest,
 )
 
 from app.modules.qrcode.presentation.schemas.qrcode_response_schema import (
@@ -34,7 +32,7 @@ router = APIRouter(
 # DEPENDENCIES
 # ==========================================================
 
-qrcode_service = PyzbarQRCodeService()
+qrcode_service = QRCodeAnalyzerService()
 
 analyze_qrcode_usecase = AnalyzeQRCodeUseCase(
     analyzer_service=qrcode_service,
@@ -48,10 +46,9 @@ analyze_qrcode_usecase = AnalyzeQRCodeUseCase(
 @router.post(
     "/analyze",
     response_model=QRCodeResponseSchema,
-    status_code=status.HTTP_200_OK,
 )
 async def analyze_qrcode(
-    file: UploadFile = File(...),
+    payload: QRCodeAnalyzeRequest,
 
     current_user: UserEntity = Depends(
         get_current_user,
@@ -59,24 +56,10 @@ async def analyze_qrcode(
 ):
     """
     Analisa QRCode com validação antifraude.
-    Requer autenticação.
     """
 
-    if not file.content_type.startswith(
-        "image/",
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "O arquivo enviado "
-                "deve ser uma imagem."
-            ),
-        )
-
-    image_bytes = await file.read()
-
     result = analyze_qrcode_usecase.execute(
-        image_bytes=image_bytes,
+        content=payload.content,
     )
 
     return QRCodeResponseSchema(

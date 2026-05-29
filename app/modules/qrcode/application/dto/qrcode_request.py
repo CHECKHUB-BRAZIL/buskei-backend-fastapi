@@ -2,24 +2,24 @@ from pydantic import BaseModel
 from pydantic import Field
 
 
-class QRCodeRequest(BaseModel):
+class QRCodeAnalyzeRequest(BaseModel):
     """
-    DTO de entrada para análise antifraude
-    de QRCode.
+    DTO de entrada para análise
+    antifraude de QRCode.
     """
 
-    filename: str = Field(
+    content: str = Field(
         ...,
-        examples=["qrcode.png"],
-        description="Nome do arquivo enviado.",
-    )
-
-    content_type: str = Field(
-        ...,
-        examples=["image/png"],
-        description="Tipo MIME da imagem.",
+        examples=[
+            "https://google.com",
+            "00020126580014BR.GOV.BCB.PIX...",
+        ],
+        description=(
+            "Conteúdo textual extraído "
+            "do QRCode."
+        ),
     )
 
     model_config = {
-        "from_attributes": True
+        "from_attributes": True,
     }
