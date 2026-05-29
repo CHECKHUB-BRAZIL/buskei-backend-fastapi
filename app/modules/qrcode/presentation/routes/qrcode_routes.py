@@ -14,7 +14,9 @@ from app.modules.qrcode.application.usecases.analyze_qrcode_usecase import (
 )
 
 
-from app.modules.qrcode.domain.services.qrcode_decoder_service import QRCodeAnalyzerService
+from app.modules.qrcode.infrastructure.services.antifraud_qrcode_service import (
+    AntiFraudQRCodeService,
+)
 from app.modules.qrcode.presentation.schemas.qrcode_request_schema import (
     QRCodeAnalyzeRequest,
 )
@@ -32,7 +34,7 @@ router = APIRouter(
 # DEPENDENCIES
 # ==========================================================
 
-qrcode_service = QRCodeAnalyzerService()
+qrcode_service = AntiFraudQRCodeService()
 
 analyze_qrcode_usecase = AnalyzeQRCodeUseCase(
     analyzer_service=qrcode_service,

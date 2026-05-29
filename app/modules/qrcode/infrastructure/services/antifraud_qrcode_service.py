@@ -13,7 +13,7 @@ from app.modules.qrcode.domain.value_objects.qrcode_data import (
 )
 
 
-class PyzbarQRCodeService(QRCodeAnalyzerService):
+class AntiFraudQRCodeService(QRCodeAnalyzerService):
     """
     Serviço responsável por analisar
     conteúdo de QRCode e executar
