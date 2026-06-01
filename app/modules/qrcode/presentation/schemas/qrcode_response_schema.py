@@ -15,11 +15,11 @@ class QRCodeResponseSchema(BaseModel):
 
     qrcode_type: str = Field(
         ...,
-        description="Tipo identificado do QRCode",
+        description="Tipo identificado",
         examples=[
             "pix",
             "url",
-            "text",
+            "generic",
         ],
     )
 
@@ -32,27 +32,33 @@ class QRCodeResponseSchema(BaseModel):
         ...,
         ge=0,
         le=100,
-        description="Pontuação de risco antifraude",
+        description="Pontuação de risco",
     )
 
     status: str = Field(
         ...,
-        description="Status da análise",
+        description="Resultado da análise",
         examples=[
             "safe",
+            "attention",
             "suspicious",
-            "malicious",
+            "fraud_suspect",
         ],
     )
 
-    reason: str | None = Field(
-        default=None,
-        description="Motivo principal da análise",
+    reasons: list[str] = Field(
+        default_factory=list,
+        description="Motivos que aumentaram o risco",
+    )
+
+    positives: list[str] = Field(
+        default_factory=list,
+        description="Aspectos considerados seguros",
     )
 
     pix_key: str | None = Field(
         default=None,
-        description="Chave PIX detectada",
+        description="Chave PIX identificada",
     )
 
     merchant_name: str | None = Field(
@@ -62,17 +68,17 @@ class QRCodeResponseSchema(BaseModel):
 
     amount: float | None = Field(
         default=None,
-        description="Valor identificado",
+        description="Valor encontrado",
     )
 
     detected_url: str | None = Field(
         default=None,
-        description="URL detectada no QRCode",
+        description="URL identificada",
     )
 
     is_suspicious_url: bool = Field(
         default=False,
-        description="Indica se a URL é suspeita",
+        description="Indica URL suspeita",
     )
 
     has_unknown_domain: bool = Field(
@@ -80,5 +86,6 @@ class QRCodeResponseSchema(BaseModel):
         description="Indica domínio desconhecido",
     )
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True,
+    }

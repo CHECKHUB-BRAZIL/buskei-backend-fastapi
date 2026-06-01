@@ -4,30 +4,37 @@ from typing import Optional
 
 @dataclass(frozen=True)
 class QRCodeData:
-    # valor original lido
+    # valor original
     raw_value: str
 
-    # tipo detectado
+    # tipo
     qrcode_type: str
 
-    # validação estrutural
+    # validade estrutural
     is_valid: bool
 
-    # antifraude
+    # score antifraude
     risk_score: int
+
+    # safe | attention | suspicious | fraud_suspect
     status: str
 
     # explicabilidade
-    reason: Optional[str] = None
+    reasons: list[str]
+
+    positives: list[str]
 
     # PIX
     pix_key: Optional[str] = None
+
     merchant_name: Optional[str] = None
+
     amount: Optional[float] = None
 
-    # links
+    # URL
     detected_url: Optional[str] = None
 
     # segurança
     is_suspicious_url: bool = False
+
     has_unknown_domain: bool = False

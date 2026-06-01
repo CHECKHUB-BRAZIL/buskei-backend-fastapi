@@ -1,4 +1,10 @@
-from urllib.parse import urlparse
+from app.modules.link_analysis.domain.services.link_analysis_service import (
+    LinkAnalysisService,
+)
+
+from app.modules.link_analysis.domain.value_objects.url_vo import (
+    URLVO,
+)
 
 from app.modules.qrcode.domain.exceptions.qrcode_exceptions import (
     InvalidQRCodeException,
@@ -20,27 +26,10 @@ class AntiFraudQRCodeService(QRCodeAnalyzerService):
     verificações antifraude.
     """
 
-    SUSPICIOUS_KEYWORDS = [
-        "login",
-        "seguro",
-        "update",
-        "verificacao",
-        "verify",
-        "gift",
-        "premio",
-        "bonus",
-        "pix-premio",
-        "pixbonus",
-    ]
-
-    TRUSTED_DOMAINS = [
-        "gov.br",
-        "nubank.com.br",
-        "itau.com.br",
-        "mercadopago.com.br",
-        "picpay.com",
-        "paypal.com",
-    ]
+    def __init__(self):
+        self._link_analysis_service = (
+            LinkAnalysisService()
+        )
 
     def analyze(
         self,
@@ -61,9 +50,8 @@ class AntiFraudQRCodeService(QRCodeAnalyzerService):
 
         risk_score = 0
 
-        status = "safe"
-
-        reason = None
+        reasons = []
+        positives = []
 
         detected_url = None
 
@@ -71,38 +59,51 @@ class AntiFraudQRCodeService(QRCodeAnalyzerService):
 
         has_unknown_domain = False
 
+        pix_key = None
+
+        merchant_name = None
+
+        amount = None
+
         # =====================================================
-        # URL ANALYSIS
+        # URL
         # =====================================================
 
         if qrcode_type == "url":
+            (
+                risk_score,
+                reasons,
+                positives,
+            ) = self._analyze_url(
+                raw_value,
+            )
+
             detected_url = raw_value
-
-            parsed = urlparse(raw_value)
-
-            domain = parsed.netloc.lower()
-
-            has_unknown_domain = not any(
-                trusted in domain
-                for trusted in self.TRUSTED_DOMAINS
-            )
-
-            suspicious_keyword_found = any(
-                keyword in raw_value.lower()
-                for keyword in self.SUSPICIOUS_KEYWORDS
-            )
-
-            if suspicious_keyword_found:
-                risk_score += 40
-
-            if has_unknown_domain:
-                risk_score += 35
-
-            if raw_value.startswith("http://"):
-                risk_score += 15
 
             is_suspicious_url = (
                 risk_score >= 50
+            )
+
+        # =====================================================
+        # PIX
+        # =====================================================
+
+        elif qrcode_type == "pix":
+            (
+                risk_score,
+                reasons,
+                positives,
+            ) = self._analyze_pix(
+                raw_value,
+            )
+
+        # =====================================================
+        # GENERIC
+        # =====================================================
+
+        else:
+            positives.append(
+                "QRCode identificado como conteúdo genérico."
             )
 
         # =====================================================
@@ -112,16 +113,11 @@ class AntiFraudQRCodeService(QRCodeAnalyzerService):
         if risk_score >= 80:
             status = "fraud_suspect"
 
-            reason = (
-                "QRCode com alto risco de fraude."
-            )
-
         elif risk_score >= 50:
             status = "suspicious"
 
-            reason = (
-                "QRCode requer atenção."
-            )
+        elif risk_score >= 20:
+            status = "attention"
 
         else:
             status = "safe"
@@ -132,13 +128,80 @@ class AntiFraudQRCodeService(QRCodeAnalyzerService):
             is_valid=True,
             risk_score=risk_score,
             status=status,
-            reason=reason,
-            pix_key=None,
-            merchant_name=None,
-            amount=None,
+            reasons=reasons,
+            positives=positives,
+            pix_key=pix_key,
+            merchant_name=merchant_name,
+            amount=amount,
             detected_url=detected_url,
             is_suspicious_url=is_suspicious_url,
             has_unknown_domain=has_unknown_domain,
+        )
+
+    def _analyze_url(
+        self,
+        url: str,
+    ):
+        """
+        Reutiliza o módulo de análise
+        de links já existente.
+        """
+
+        url_vo = URLVO(url)
+
+        return (
+            self._link_analysis_service.analyze(
+                url_vo,
+            )
+        )
+
+    def _analyze_pix(
+        self,
+        payload: str,
+    ):
+        """
+        Regras simples para PIX.
+        Futuramente pode ser substituído
+        por parser EMV completo.
+        """
+
+        risk_score = 0
+
+        reasons = []
+
+        positives = []
+
+        payload_lower = payload.lower()
+
+        if len(payload) < 30:
+            risk_score += 40
+
+            reasons.append(
+                "Payload PIX muito curto."
+            )
+        else:
+            positives.append(
+                "Payload possui tamanho compatível com PIX."
+            )
+
+        if (
+            "br.gov.bcb.pix"
+            not in payload_lower
+        ):
+            risk_score += 60
+
+            reasons.append(
+                "Payload PIX inválido."
+            )
+        else:
+            positives.append(
+                "Payload segue o padrão BR Code do Banco Central."
+            )
+
+        return (
+            risk_score,
+            reasons,
+            positives,
         )
 
     def _detect_type(

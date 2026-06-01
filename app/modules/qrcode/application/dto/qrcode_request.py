@@ -10,14 +10,15 @@ class QRCodeAnalyzeRequest(BaseModel):
 
     content: str = Field(
         ...,
-        examples=[
-            "https://google.com",
-            "00020126580014BR.GOV.BCB.PIX...",
-        ],
+        min_length=1,
         description=(
             "Conteúdo textual extraído "
             "do QRCode."
         ),
+        examples=[
+            "https://google.com",
+            "00020126360014BR.GOV.BCB.PIX...",
+        ],
     )
 
     model_config = {

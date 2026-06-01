@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel
 from pydantic import Field
 
@@ -19,13 +17,12 @@ class QRCodeResponse(BaseModel):
     # tipo detectado
     qrcode_type: str = Field(
         ...,
+        description="Tipo identificado do QRCode.",
         examples=[
             "pix",
             "url",
             "generic",
-            "payment",
         ],
-        description="Tipo identificado do QRCode.",
     )
 
     # validação
@@ -44,37 +41,43 @@ class QRCodeResponse(BaseModel):
 
     status: str = Field(
         ...,
+        description="Status da análise.",
         examples=[
             "safe",
+            "attention",
             "suspicious",
             "fraud_suspect",
         ],
-        description="Status antifraude.",
     )
 
-    reason: Optional[str] = Field(
-        default=None,
-        description="Motivo da classificação.",
+    reasons: list[str] = Field(
+        default_factory=list,
+        description="Motivos que aumentaram o risco.",
+    )
+
+    positives: list[str] = Field(
+        default_factory=list,
+        description="Aspectos considerados seguros.",
     )
 
     # PIX
-    pix_key: Optional[str] = Field(
+    pix_key: str | None = Field(
         default=None,
         description="Chave PIX detectada.",
     )
 
-    merchant_name: Optional[str] = Field(
+    merchant_name: str | None = Field(
         default=None,
         description="Nome do recebedor.",
     )
 
-    amount: Optional[float] = Field(
+    amount: float | None = Field(
         default=None,
         description="Valor detectado.",
     )
 
     # URLs
-    detected_url: Optional[str] = Field(
+    detected_url: str | None = Field(
         default=None,
         description="URL encontrada no QRCode.",
     )
@@ -90,5 +93,5 @@ class QRCodeResponse(BaseModel):
     )
 
     model_config = {
-        "from_attributes": True
+        "from_attributes": True,
     }
