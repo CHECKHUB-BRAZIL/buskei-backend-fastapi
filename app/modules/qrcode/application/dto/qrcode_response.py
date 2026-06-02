@@ -60,7 +60,10 @@ class QRCodeResponse(BaseModel):
         description="Aspectos considerados seguros.",
     )
 
+    # =====================================================
     # PIX
+    # =====================================================
+
     pix_key: str | None = Field(
         default=None,
         description="Chave PIX detectada.",
@@ -71,12 +74,30 @@ class QRCodeResponse(BaseModel):
         description="Nome do recebedor.",
     )
 
+    city: str | None = Field(
+        default=None,
+        description="Cidade do recebedor.",
+    )
+
     amount: float | None = Field(
         default=None,
         description="Valor detectado.",
     )
 
-    # URLs
+    txid: str | None = Field(
+        default=None,
+        description="TXID encontrado no payload PIX.",
+    )
+
+    is_valid_crc: bool | None = Field(
+        default=None,
+        description="Indica se o CRC16 do payload PIX é válido.",
+    )
+
+    # =====================================================
+    # URL
+    # =====================================================
+
     detected_url: str | None = Field(
         default=None,
         description="URL encontrada no QRCode.",

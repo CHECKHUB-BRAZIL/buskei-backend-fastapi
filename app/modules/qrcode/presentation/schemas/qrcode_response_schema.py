@@ -66,9 +66,24 @@ class QRCodeResponseSchema(BaseModel):
         description="Nome do recebedor",
     )
 
+    city: str | None = Field(
+        default=None,
+        description="Cidade do recebedor identificada no PIX",
+    )
+
     amount: float | None = Field(
         default=None,
         description="Valor encontrado",
+    )
+
+    txid: str | None = Field(
+        default=None,
+        description="TXID encontrado no payload PIX",
+    )
+
+    is_valid_crc: bool | None = Field(
+        default=None,
+        description="Indica se o checksum CRC16 do PIX é válido",
     )
 
     detected_url: str | None = Field(

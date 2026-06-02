@@ -1,7 +1,6 @@
 from app.modules.link_analysis.domain.services.link_analysis_service import (
     LinkAnalysisService,
 )
-
 from app.modules.link_analysis.domain.value_objects.url_vo import (
     URLVO,
 )
@@ -18,6 +17,10 @@ from app.modules.qrcode.domain.value_objects.qrcode_data import (
     QRCodeData,
 )
 
+from app.modules.qrcode.infrastructure.services.pix_payload_parser import (
+    PixPayloadParser,
+)
+
 
 class AntiFraudQRCodeService(QRCodeAnalyzerService):
     """
@@ -29,6 +32,10 @@ class AntiFraudQRCodeService(QRCodeAnalyzerService):
     def __init__(self):
         self._link_analysis_service = (
             LinkAnalysisService()
+        )
+
+        self._pix_parser = (
+            PixPayloadParser()
         )
 
     def analyze(
@@ -50,8 +57,9 @@ class AntiFraudQRCodeService(QRCodeAnalyzerService):
 
         risk_score = 0
 
-        reasons = []
-        positives = []
+        reasons: list[str] = []
+
+        positives: list[str] = []
 
         detected_url = None
 
@@ -63,13 +71,20 @@ class AntiFraudQRCodeService(QRCodeAnalyzerService):
 
         merchant_name = None
 
+        city = None
+
         amount = None
+
+        txid = None
+
+        is_valid_crc = None
 
         # =====================================================
         # URL
         # =====================================================
 
         if qrcode_type == "url":
+
             (
                 risk_score,
                 reasons,
@@ -89,6 +104,7 @@ class AntiFraudQRCodeService(QRCodeAnalyzerService):
         # =====================================================
 
         elif qrcode_type == "pix":
+
             (
                 risk_score,
                 reasons,
@@ -97,11 +113,86 @@ class AntiFraudQRCodeService(QRCodeAnalyzerService):
                 raw_value,
             )
 
+            try:
+
+                pix_data = (
+                    self._pix_parser.parse(
+                        raw_value,
+                    )
+                )
+
+                pix_key = (
+                    pix_data.pix_key
+                )
+
+                merchant_name = (
+                    pix_data.merchant_name
+                )
+
+                amount = (
+                    pix_data.amount
+                )
+
+                city = (
+                    pix_data.city
+                )
+
+                txid = (
+                    pix_data.txid
+                )
+
+                is_valid_crc = (
+                    pix_data.is_valid_crc
+                )
+
+                if (
+                    not pix_data.is_valid_crc
+                ):
+                    risk_score += 80
+
+                    reasons.append(
+                        "Checksum CRC16 do PIX inválido."
+                    )
+
+                else:
+                    positives.append(
+                        "Checksum CRC16 válido."
+                    )
+
+                if merchant_name:
+                    positives.append(
+                        f"Recebedor identificado: {merchant_name}"
+                    )
+
+                if city:
+                    positives.append(
+                        f"Cidade identificada: {city}"
+                    )
+
+                if txid:
+                    positives.append(
+                        f"TXID identificado: {txid}"
+                    )
+
+                if amount:
+                    positives.append(
+                        f"Valor identificado: R$ {amount}"
+                    )
+
+            except Exception:
+
+                risk_score += 40
+
+                reasons.append(
+                    "Não foi possível interpretar completamente o payload PIX."
+                )
+
         # =====================================================
         # GENERIC
         # =====================================================
 
         else:
+
             positives.append(
                 "QRCode identificado como conteúdo genérico."
             )
@@ -111,29 +202,45 @@ class AntiFraudQRCodeService(QRCodeAnalyzerService):
         # =====================================================
 
         if risk_score >= 80:
+
             status = "fraud_suspect"
 
         elif risk_score >= 50:
+
             status = "suspicious"
 
         elif risk_score >= 20:
+
             status = "attention"
 
         else:
+
             status = "safe"
 
         return QRCodeData(
             raw_value=raw_value,
             qrcode_type=qrcode_type,
             is_valid=True,
-            risk_score=risk_score,
+            risk_score=min(
+                risk_score,
+                100,
+            ),
             status=status,
             reasons=reasons,
             positives=positives,
+
+            # PIX
             pix_key=pix_key,
             merchant_name=merchant_name,
+            city=city,
             amount=amount,
+            txid=txid,
+            is_valid_crc=is_valid_crc,
+
+            # URL
             detected_url=detected_url,
+
+            # Segurança
             is_suspicious_url=is_suspicious_url,
             has_unknown_domain=has_unknown_domain,
         )
@@ -160,9 +267,7 @@ class AntiFraudQRCodeService(QRCodeAnalyzerService):
         payload: str,
     ):
         """
-        Regras simples para PIX.
-        Futuramente pode ser substituído
-        por parser EMV completo.
+        Regras básicas de validação PIX.
         """
 
         risk_score = 0
@@ -174,12 +279,15 @@ class AntiFraudQRCodeService(QRCodeAnalyzerService):
         payload_lower = payload.lower()
 
         if len(payload) < 30:
+
             risk_score += 40
 
             reasons.append(
                 "Payload PIX muito curto."
             )
+
         else:
+
             positives.append(
                 "Payload possui tamanho compatível com PIX."
             )
@@ -188,12 +296,15 @@ class AntiFraudQRCodeService(QRCodeAnalyzerService):
             "br.gov.bcb.pix"
             not in payload_lower
         ):
+
             risk_score += 60
 
             reasons.append(
-                "Payload PIX inválido."
+                "Payload PIX não segue o padrão BR Code."
             )
+
         else:
+
             positives.append(
                 "Payload segue o padrão BR Code do Banco Central."
             )
@@ -215,12 +326,19 @@ class AntiFraudQRCodeService(QRCodeAnalyzerService):
         lowered = value.lower()
 
         if (
-            lowered.startswith("http://")
-            or lowered.startswith("https://")
+            lowered.startswith(
+                "http://"
+            )
+            or lowered.startswith(
+                "https://"
+            )
         ):
             return "url"
 
-        if "br.gov.bcb.pix" in lowered:
+        if (
+            "br.gov.bcb.pix"
+            in lowered
+        ):
             return "pix"
 
         return "generic"

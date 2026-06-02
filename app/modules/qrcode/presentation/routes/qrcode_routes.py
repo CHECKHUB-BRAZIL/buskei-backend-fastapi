@@ -72,9 +72,14 @@ async def analyze_qrcode(
         status=result.status,
         reasons=result.reasons,
         positives=result.positives,
+
         pix_key=result.pix_key,
         merchant_name=result.merchant_name,
+        city=result.city,
         amount=result.amount,
+        txid=result.txid,
+        is_valid_crc=result.is_valid_crc,
+
         detected_url=result.detected_url,
         is_suspicious_url=result.is_suspicious_url,
         has_unknown_domain=result.has_unknown_domain,
