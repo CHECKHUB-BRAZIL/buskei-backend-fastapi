@@ -1,9 +1,13 @@
+from redis import Redis
+
+from app.modules.auth.domain.exceptions.auth_exceptions import (
+    PasswordResetTokenInvalidException,
+)
+from app.modules.auth.domain.repositories.user_repository import UserRepository
 from app.modules.auth.domain.value_objects.password_vo import Password
 from app.modules.auth.domain.value_objects.plain_password_vo import PlainPassword
-from app.shared.domain.value_objects.id_vo import Id
-from redis import Redis
-from app.modules.auth.domain.repositories.user_repository import UserRepository
 from app.modules.auth.infrastructure.security.password_hasher import PasswordHasher
+from app.shared.domain.value_objects.id_vo import Id
 
 
 class ResetPasswordUseCase:
@@ -17,23 +21,30 @@ class ResetPasswordUseCase:
         self.redis = redis
         self.password_hasher = password_hasher
 
-    async def execute(self, token: str, new_password: PlainPassword):
+    async def execute(
+        self,
+        token: str,
+        new_password: PlainPassword,
+    ) -> Id:
         redis_key = f"password_reset:{token}"
 
         user_id = self.redis.get(redis_key)
-        if not user_id:
-            raise ValueError("Token inválido ou expirado")
 
-        user = await self.user_repository.get_by_id(Id(user_id))
-        if not user:
-            raise ValueError("Usuário não encontrado")
+        if user_id is None:
+            raise PasswordResetTokenInvalidException()
 
-        hashed = self.password_hasher.hash(new_password.value)
-        password = Password(hashed)
+        if isinstance(user_id, bytes):
+            user_id = user_id.decode("utf-8")
+
+        user_id = Id(user_id)
+
+        hashed_password = self.password_hasher.hash(
+            new_password.value
+        )
 
         await self.user_repository.update_password(
-            user_id=Id(user_id),
-            password=password,
+            user_id=user_id,
+            password=Password(hashed_password),
         )
 
         self.redis.delete(redis_key)

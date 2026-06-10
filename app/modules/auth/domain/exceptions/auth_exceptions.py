@@ -116,6 +116,23 @@ class InvalidTokenException(AuthException):
         self.message = message
         super().__init__(message)
 
+class PasswordResetTokenInvalidException(AuthException):
+    """
+    Exceção lançada quando um token de recuperação
+    de senha é inválido ou expirou.
+
+    Pode ocorrer quando:
+    --------------------
+    - O token não existe
+    - O token expirou
+    - O token já foi utilizado
+    - O token foi removido do armazenamento
+    """
+
+    def __init__(self):
+        super().__init__(
+            "Token de recuperação de senha inválido ou expirado"
+        )
 
 class InvalidPasswordException(AuthException):
     def __init__(self):
