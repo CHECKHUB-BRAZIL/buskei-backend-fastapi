@@ -1,6 +1,7 @@
 from app.modules.auth.application.dtos.registerinput_dto import RegisterInputDTO
 
 from app.modules.auth.application.dtos.registerresult_dto import RegisterResultDTO
+from app.modules.auth.application.services.password_hasher import PasswordHasher
 from app.modules.auth.domain.entities.user_entity import UserEntity
 from app.modules.auth.domain.repositories.user_repository import UserRepository
 
@@ -9,7 +10,6 @@ from app.modules.auth.domain.exceptions.auth_exceptions import (
 )
 from app.modules.auth.domain.value_objects.password_vo import Password
 from app.shared.domain.value_objects.id_vo import Id
-from app.modules.auth.infrastructure.security.password_hasher import PasswordHasher
 
 
 class RegisterUseCase:

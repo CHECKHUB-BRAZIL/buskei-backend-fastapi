@@ -1,12 +1,12 @@
 from redis import Redis
 
+from app.modules.auth.application.services.password_hasher import PasswordHasher
 from app.modules.auth.domain.exceptions.auth_exceptions import (
     PasswordResetTokenInvalidException,
 )
 from app.modules.auth.domain.repositories.user_repository import UserRepository
 from app.modules.auth.domain.value_objects.password_vo import Password
 from app.modules.auth.domain.value_objects.plain_password_vo import PlainPassword
-from app.modules.auth.infrastructure.security.password_hasher import PasswordHasher
 from app.shared.domain.value_objects.id_vo import Id
 
 

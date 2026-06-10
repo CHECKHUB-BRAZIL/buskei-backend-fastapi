@@ -1,12 +1,13 @@
 from app.modules.auth.application.dtos.logininput_dto import LoginInputDTO
 from app.modules.auth.application.dtos.loginresult_dto import LoginResultDTO
+from app.modules.auth.application.services.password_hasher import PasswordHasher
 from app.modules.auth.domain.repositories.user_repository import UserRepository
 from app.modules.auth.domain.exceptions.auth_exceptions import (
     InvalidCredentialsException,
     UserNotFoundException,
     InactiveUserException,
 )
-from app.modules.auth.infrastructure.security.password_hasher import PasswordHasher
+
 
 class LoginUseCase:
     def __init__(
