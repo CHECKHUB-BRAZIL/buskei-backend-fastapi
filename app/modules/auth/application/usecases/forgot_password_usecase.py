@@ -1,10 +1,11 @@
 from uuid import uuid4
 
-from app.modules.auth.domain.value_objects.email_vo import Email
 from redis import Redis
 
-from app.modules.auth.domain.repositories.user_repository import UserRepository
 from app.core.config import settings
+from app.modules.auth.domain.repositories.user_repository import UserRepository
+from app.modules.auth.application.services.email_service import EmailService
+from app.modules.auth.domain.value_objects.email_vo import Email
 
 
 class ForgotPasswordUseCase:
@@ -12,38 +13,32 @@ class ForgotPasswordUseCase:
         self,
         user_repository: UserRepository,
         redis: Redis,
+        email_service: EmailService,
     ):
         self.user_repository = user_repository
         self.redis = redis
+        self.email_service = email_service
 
-    async def execute(self, email: Email):
-        # 1. Busca usuário
+    async def execute(self, email: Email) -> None:
         user = await self.user_repository.get_by_email(email)
 
-        # 2. Segurança: não revela se existe ou não
         if not user:
             return
 
-        # 3. Gera token
         token = uuid4().hex
 
-        # 4. Salva no Redis (15 minutos)
         self.redis.setex(
             name=f"password_reset:{token}",
             time=settings.PASSWORD_RESET_TOKEN_EXPIRE_SECONDS,
             value=str(user.id.value),
         )
 
-        # 5. Enviar email (por enquanto stub)
-        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+        reset_url = (
+            f"{settings.FRONTEND_URL}/reset-password"
+            f"?token={token}"
+        )
 
-        # STUB TEMPORÁRIO (email depois)
-        print(f"RESET LINK: {reset_link}")
-       
-        # send_email(
-        #     to=user.email.value,
-        #     subject="Recuperação de senha",
-        #     body=f"Clique no link para redefinir sua senha: {reset_link}"
-        # )
-
-        return
+        await self.email_service.send_password_reset(
+            email=user.email.value,
+            reset_url=reset_url,
+        )
