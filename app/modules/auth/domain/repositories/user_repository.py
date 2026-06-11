@@ -42,7 +42,7 @@ class UserRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def delete(self, user_id: Id) -> None:
+    async def delete(self, user_id: Id) -> bool:
         """Remove usuário."""
         raise NotImplementedError
     
@@ -59,4 +59,4 @@ class UserRepository(ABC):
     @abstractmethod
     async def update_password(self, user_id: Id, password: Password) -> None:
         """Atualiza somente a senha do usuário"""
-        pass
+        raise NotImplementedError
