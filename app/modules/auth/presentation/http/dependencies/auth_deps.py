@@ -2,11 +2,13 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.infra.redis.session_repository import RedisSessionRepository
+from app.modules.auth.application.services.email_service import EmailService
 from app.modules.auth.application.services.google_token_verifier import GoogleTokenVerifier
 from app.modules.auth.application.services.jwt_service import JwtService
 from app.modules.auth.application.usecases.google_login_usecase import GoogleLoginUseCase
 from app.modules.auth.application.usecases.reset_password_usecase import ResetPasswordUseCase
 from app.modules.auth.domain.repositories.session_repository import SessionRepository
+from app.modules.auth.infrastructure.email.console_email_service import ConsoleEmailService
 from app.modules.auth.infrastructure.repositories.google_token_verifier_impl import GoogleTokenVerifierImpl
 from app.modules.auth.infrastructure.repositories.jwt_service_impl import JwtServiceImpl
 from redis import Redis
@@ -24,6 +26,10 @@ from app.modules.auth.application.usecases.register_usecase import RegisterUseCa
 from app.modules.auth.application.usecases.getcurrentuser_usecase import GetCurrentUserUseCase
 from app.modules.auth.domain.exceptions.auth_exceptions import InvalidTokenException
 from app.core.constants import TOKEN_TYPE_ACCESS
+from app.modules.auth.infrastructure.email.resend_email_service import (
+    ResendEmailService,
+)
+
 
 from app.infra.redis.dependencies import get_redis
 
@@ -200,3 +206,6 @@ def get_session_repository(
     redis: Redis = Depends(get_redis),
 ) -> SessionRepository:
     return RedisSessionRepository(redis)
+
+def get_email_service() -> EmailService:
+    return ConsoleEmailService()
