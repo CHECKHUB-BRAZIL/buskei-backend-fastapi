@@ -1,4 +1,4 @@
-from uuid import uuid4
+from secrets import token_urlsafe
 
 from redis import Redis
 
@@ -25,9 +25,9 @@ class ForgotPasswordUseCase:
         if not user:
             return
 
-        token = uuid4().hex
+        token = token_urlsafe(32)
 
-        self.redis.setex(
+        await self.redis.setex(
             name=f"password_reset:{token}",
             time=settings.PASSWORD_RESET_TOKEN_EXPIRE_SECONDS,
             value=str(user.id.value),
